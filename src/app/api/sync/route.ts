@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies }                   from 'next/headers';
 import { getIronSession }            from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/session';
-import { getUser, setBacCache }      from '@/lib/kv';
+import { getUser, getBacCache, setBacCache } from '@/lib/kv';
 import { fetchCheckins, parseUntappdDate, RateLimitError } from '@/lib/untappd';
 import { calculateBac }              from '@/lib/bac';
 
@@ -23,29 +23,46 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const raw = await fetchCheckins(user.untappdToken);
-    const checkins = raw.map(c => ({
-      createdAtMs: parseUntappdDate(c.createdAt),
-      abv:         c.abv,
-      servingType: c.servingType,
-    }));
+    const [raw, existingCache] = await Promise.all([
+      fetchCheckins(user.untappdToken),
+      getBacCache(session.userId),
+    ]);
+    const cutoffMs = Date.now() - 24 * 60 * 60_000;
 
-    const result = calculateBac(checkins, user.weightKg, user.gender);
+    // Re-apply any per-checkin serving overrides the user set
+    const overrideMap = new Map<number, number>(
+      (existingCache?.checkins ?? [])
+        .filter(c => c.volumeMlOverride != null)
+        .map(c => [c.checkinId, c.volumeMlOverride!]),
+    );
 
-    await setBacCache(session.userId, {
-      ...result,
-      checkins: raw.map(c => ({
-        checkinId:   c.checkinId,
-        beerName:    c.beerName,
-        breweryName: c.breweryName,
-        style:       c.style,
-        abv:         c.abv,
-        servingType: c.servingType,
-        createdAtMs: parseUntappdDate(c.createdAt),
+    const freshCheckins = raw
+      .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
+      .map(c => ({
+        checkinId:        c.checkinId,
+        beerName:         c.beerName,
+        breweryName:      c.breweryName,
+        style:            c.style,
+        abv:              c.abv,
+        servingType:      c.servingType,
+        createdAtMs:      parseUntappdDate(c.createdAt),
+        volumeMlOverride: overrideMap.get(c.checkinId),
+      }));
+
+    const result = calculateBac(
+      freshCheckins.map(c => ({
+        createdAtMs:      c.createdAtMs,
+        abv:              c.abv,
+        servingType:      c.servingType,
+        volumeMlOverride: c.volumeMlOverride,
       })),
-    });
+      user.weightKg,
+      user.gender,
+    );
 
-    return NextResponse.json(result);
+    await setBacCache(session.userId, { ...result, checkins: freshCheckins });
+
+    return NextResponse.json({ ...result, checkins: freshCheckins });
   } catch (err) {
     if (err instanceof RateLimitError) {
       return NextResponse.json({ error: 'rate limited by Untappd' }, { status: 429 });

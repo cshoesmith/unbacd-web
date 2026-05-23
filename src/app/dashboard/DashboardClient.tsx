@@ -20,6 +20,7 @@ interface SyncResult {
   soberMs: number;
   drinkCount: number;
   calculatedAt: number;
+  checkins?: CachedCheckin[];
 }
 
 function BacCircle({ bac }: { bac: number | null }) {
@@ -44,7 +45,7 @@ function BacCircle({ bac }: { bac: number | null }) {
           className="text-5xl font-black tabular-nums"
           style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}
         >
-          {bac !== null ? bac.toFixed(3) : '—'}
+          {bac !== null ? bac.toFixed(2) : '—'}
         </span>
 
         {/* Status badge */}
@@ -72,28 +73,90 @@ function SoberLine({ bac, soberMs }: { bac: number | null; soberMs: number | nul
   );
 }
 
-function DrinkList({ checkins }: { checkins: CachedCheckin[] }) {
-  if (checkins.length === 0) return null;
+const SERVING_OPTIONS: { label: string; ml: number | null }[] = [
+  { label: 'Auto',                ml: null },
+  { label: '150 ml',             ml: 150  },
+  { label: '285 ml · middie',    ml: 285  },
+  { label: '330 ml · euro',      ml: 330  },
+  { label: '375 ml · can',       ml: 375  },
+  { label: '450 ml · schooner',  ml: 450  },
+  { label: '500 ml',             ml: 500  },
+  { label: '570 ml · pint',      ml: 570  },
+];
+
+function timeSince(createdAtMs: number, now: number): string {
+  const diff = now - createdAtMs;
+  const mins = Math.floor(diff / 60_000);
+  const hrs  = Math.floor(mins / 60);
+  const rem  = mins % 60;
+  if (hrs > 0 && rem > 0) return `${hrs}h ${rem}m ago`;
+  if (hrs > 0)            return `${hrs}h ago`;
+  if (mins > 0)           return `${mins}m ago`;
+  return 'just now';
+}
+
+function DrinkList({
+  checkins,
+  pendingIds,
+  onServingChange,
+  now,
+}: {
+  checkins: CachedCheckin[];
+  pendingIds: Set<number>;
+  onServingChange: (checkinId: number, volumeMl: number | null) => Promise<void>;
+  now: number;
+}) {
+  const cutoff = now - 24 * 60 * 60_000;
+  const recent = checkins.filter(c => c.createdAtMs >= cutoff);
+  if (recent.length === 0) return null;
   return (
     <div className="w-full max-w-sm mt-2">
       <h2 className="text-[#6b7280] text-xs uppercase tracking-widest mb-2 px-1">
-        Recent drinks (8h window)
+        Recent drinks · 24h window
       </h2>
-      <div className="flex flex-col gap-1">
-        {checkins.slice(0, 10).map((c, i) => (
-          <div
-            key={c.checkinId ?? i}
-            className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3"
-          >
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-              <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
+      <div className="flex flex-col gap-2">
+        {recent.map((c, i) => {
+          const pending = pendingIds.has(c.checkinId ?? -1);
+          return (
+            <div
+              key={c.checkinId ?? i}
+              className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
+            >
+              {/* Top row: beer info + ABV + time */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                  <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                  <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                  <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                </div>
+              </div>
+              {/* Serving size selector */}
+              <select
+                disabled={pending}
+                value={c.volumeMlOverride ?? ''}
+                onChange={e => {
+                  const val = e.target.value === '' ? null : Number(e.target.value);
+                  onServingChange(c.checkinId!, val);
+                }}
+                className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
+                style={{ colorScheme: 'dark' }}
+              >
+                {SERVING_OPTIONS.map(opt => (
+                  <option
+                    key={opt.ml ?? 'auto'}
+                    value={opt.ml ?? ''}
+                    style={{ backgroundColor: '#1a1816' }}
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <span className="text-xs text-[#ffd166] font-mono ml-3 flex-shrink-0">
-              {c.abv.toFixed(1)}%
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -142,6 +205,9 @@ export default function DashboardClient({
   const [calculatedAt, setCalculatedAt] = useState<number | null>(initialCalculatedAt);
   const [checkins,     setCheckins]     = useState<CachedCheckin[]>(initialCheckins);
 
+  const [pendingCheckinIds, setPendingCheckinIds] = useState<Set<number>>(new Set());
+  const [now, setNow] = useState(Date.now());
+
   const [syncing,      setSyncing]      = useState(false);
   const [syncError,    setSyncError]    = useState<string | null>(null);
   const [pin,          setPin]          = useState<string | null>(null);
@@ -162,6 +228,7 @@ export default function DashboardClient({
       setSoberMs(data.soberMs);
       setDrinkCount(data.drinkCount);
       setCalculatedAt(data.calculatedAt);
+      if (data.checkins) setCheckins(data.checkins);
       // Re-fetch checkins from a fresh dashboard render isn't possible in client;
       // we update what we have and let the next full refresh fill the list.
     } finally {
@@ -174,6 +241,32 @@ export default function DashboardClient({
     const stale = !calculatedAt || (Date.now() - calculatedAt > 5 * 60_000);
     if (stale) sync();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tick `now` every minute so time-since labels stay current
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const setServing = useCallback(async (checkinId: number, volumeMl: number | null) => {
+    setPendingCheckinIds(s => { const n = new Set(s); n.add(checkinId); return n; });
+    try {
+      const res = await fetch(`/api/checkins/${checkinId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volumeMl }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setBac(data.bac);
+      setSoberMs(data.soberMs);
+      setDrinkCount(data.drinkCount);
+      setCalculatedAt(data.calculatedAt);
+      setCheckins(data.checkins);
+    } finally {
+      setPendingCheckinIds(s => { const n = new Set(s); n.delete(checkinId); return n; });
+    }
+  }, []);
 
   // Auto-refresh every 5 min
   useEffect(() => {
@@ -215,7 +308,7 @@ export default function DashboardClient({
       <div className="flex flex-col items-center gap-1">
         {drinkCount !== null && (
           <p className="text-[#9ca3af] text-sm">
-            {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 8h window
+            {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 24h window
           </p>
         )}
         <p className="text-[#4b5563] text-xs">{lastSyncText}</p>
@@ -251,7 +344,12 @@ export default function DashboardClient({
       )}
 
       {/* Drink list */}
-      <DrinkList checkins={checkins} />
+      <DrinkList
+        checkins={checkins}
+        pendingIds={pendingCheckinIds}
+        onServingChange={setServing}
+        now={now}
+      />
 
       {/* Sign out */}
       <form action="/api/auth/logout" method="POST" className="mt-auto pt-4">

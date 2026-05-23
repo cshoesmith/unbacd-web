@@ -44,26 +44,39 @@ export async function GET(req: NextRequest) {
   try {
     const raw = await fetchCheckins(user.untappdToken);
     const cutoffMs = Date.now() - 24 * 60 * 60_000;
-    const checkins = raw
-      .map(c => ({ createdAtMs: parseUntappdDate(c.createdAt), abv: c.abv, servingType: c.servingType }))
-      .filter(c => c.createdAtMs >= cutoffMs);
 
-    const result = calculateBac(checkins, user.weightKg, user.gender);
+    // Re-apply any per-checkin serving overrides the user set via the web app
+    const overrideMap = new Map<number, number>(
+      (cached?.checkins ?? [])
+        .filter(c => c.volumeMlOverride != null)
+        .map(c => [c.checkinId, c.volumeMlOverride!]),
+    );
 
-    const cacheEntry = {
-      ...result,
-      checkins: raw
-        .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
-        .map(c => ({
-          checkinId:   c.checkinId,
-          beerName:    c.beerName,
-          breweryName: c.breweryName,
-          style:       c.style,
-          abv:         c.abv,
-          servingType: c.servingType,
-          createdAtMs: parseUntappdDate(c.createdAt),
-        })),
-    };
+    const freshCheckins = raw
+      .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
+      .map(c => ({
+        checkinId:        c.checkinId,
+        beerName:         c.beerName,
+        breweryName:      c.breweryName,
+        style:            c.style,
+        abv:              c.abv,
+        servingType:      c.servingType,
+        createdAtMs:      parseUntappdDate(c.createdAt),
+        volumeMlOverride: overrideMap.get(c.checkinId),
+      }));
+
+    const result = calculateBac(
+      freshCheckins.map(c => ({
+        createdAtMs:      c.createdAtMs,
+        abv:              c.abv,
+        servingType:      c.servingType,
+        volumeMlOverride: c.volumeMlOverride,
+      })),
+      user.weightKg,
+      user.gender,
+    );
+
+    const cacheEntry = { ...result, checkins: freshCheckins };
     await setBacCache(device.userId, cacheEntry);
 
     return NextResponse.json({

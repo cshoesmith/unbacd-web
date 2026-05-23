@@ -30,6 +30,7 @@ export interface CachedCheckin {
   abv: number;
   servingType: string;
   createdAtMs: number;
+  volumeMlOverride?: number;
 }
 
 export interface DeviceRecord {

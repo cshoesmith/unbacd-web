@@ -38,4 +38,13 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Android
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
 next-env.d.ts
+
+.vercel
+.env*.local
