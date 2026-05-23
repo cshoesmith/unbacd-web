@@ -34,7 +34,8 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
-    private static final long   TICK_INTERVAL_MS  = 30_000L;
+    private static final long   UI_TICK_MS        = 10_000L;      // 10 s  — keeps "Updated X ago" live
+    private static final long   POLL_INTERVAL_MS  = 5 * 60_000L;  // 5 min — actual API call
     private static final long   STALE_AFTER_MS    = 15 * 60_000L;
     private static final String PREFS_NAME        = "unbacd-web";
     private static final String PREF_DEVICE_TOKEN = "device-token";
@@ -92,14 +93,21 @@ public class MainActivity extends Activity {
     private TextView staleText;
     private TextView doNotDriveText;
     private FrameLayout pairingOverlay;
+    private FrameLayout splashOverlay;
     private EditText pinEditText;
     private Button connectBtn;
 
-    private final Runnable ticker = new Runnable() {
-        @Override
-        public void run() {
+    private final Runnable uiTicker = new Runnable() {
+        @Override public void run() {
             refreshTickedViews();
-            handler.postDelayed(this, TICK_INTERVAL_MS);
+            handler.postDelayed(this, UI_TICK_MS);
+        }
+    };
+
+    private final Runnable pollTicker = new Runnable() {
+        @Override public void run() {
+            pollWebApi();
+            handler.postDelayed(this, POLL_INTERVAL_MS);
         }
     };
 
@@ -116,22 +124,20 @@ public class MainActivity extends Activity {
 
         buildUi();
 
-        if (deviceToken == null) {
-            showPairingOverlay();
-        } else {
-            showNoData();
-        }
+        showSplash();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        handler.post(ticker);
+        handler.post(uiTicker);
+        handler.post(pollTicker);
     }
 
     @Override
     protected void onPause() {
-        handler.removeCallbacks(ticker);
+        handler.removeCallbacks(uiTicker);
+        handler.removeCallbacks(pollTicker);
         isFlashing = false;
         flashHandler.removeCallbacks(flashRunnable);
         super.onPause();
@@ -202,6 +208,18 @@ public class MainActivity extends Activity {
 
     private void hidePairingOverlay() {
         pairingOverlay.setVisibility(View.GONE);
+    }
+
+    private void showSplash() {
+        splashOverlay.setVisibility(View.VISIBLE);
+        handler.postDelayed(() -> {
+            splashOverlay.setVisibility(View.GONE);
+            if (deviceToken == null) {
+                showPairingOverlay();
+            } else {
+                refreshAll();
+            }
+        }, 2500);
     }
 
     private void submitPin(String rawPin) {
@@ -301,10 +319,7 @@ public class MainActivity extends Activity {
 
     private void refreshTickedViews() {
         if (deviceToken == null) return;
-        if (currentBac < 0) {
-            pollWebApi();
-            return;
-        }
+        if (currentBac < 0) return; // pollTicker handles fetching
 
         long nowMs = System.currentTimeMillis();
 
@@ -322,7 +337,7 @@ public class MainActivity extends Activity {
         }
 
         drinkCountText.setText(drinkCount == 0 ? "No drinks recorded" :
-                drinkCount + (drinkCount == 1 ? " drink" : " drinks") + " \u00b7 8h window");
+                drinkCount + (drinkCount == 1 ? " drink" : " drinks") + " \u00b7 24h window");
 
         handleText.setText(userName.isEmpty() ? "" : "@" + userName);
 
@@ -338,9 +353,6 @@ public class MainActivity extends Activity {
             pollWebApi();
         }
         if (!isStale) syncRequestSent = false;
-
-        // Regular poll on every tick
-        pollWebApi();
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -373,8 +385,8 @@ public class MainActivity extends Activity {
         bacNumberText.setTextColor(dark ? 0xfff3f4f6  : 0xffffffff);
         soberTimeText.setTextColor(dark ? 0xfff3f4f6  : 0xffffffff);
         drinkCountText.setTextColor(dark ? 0xff9ca3af  : 0xddffffff);
-        handleText.setTextColor(dark ? 0xff6b7280      : 0xaaffffff);
-        updatedText.setTextColor(dark ? 0xffaaaaaa     : 0xccffffff);
+        handleText.setTextColor(dark ? 0xffaaaaaa      : 0xccffffff);
+        updatedText.setTextColor(dark ? 0xffaaaaaa      : 0xccffffff);
 
         if (dark) {
             bacLabelText.setTextColor(0xff080604);
@@ -428,14 +440,25 @@ public class MainActivity extends Activity {
         titleText.setLetterSpacing(0.12f);
         col.addView(titleText, lp(0, 0, 0, dp(2)));
 
+        // Handle (Untappd username — below title)
+        handleText = tv("", 10, 0xff4b5563, Typeface.NORMAL);
+        handleText.setGravity(Gravity.CENTER);
+        col.addView(handleText, lp(dp(3), 0, 0, 0));
+
+        // Drink count (above BAC number)
+        drinkCountText = tv("", 11, 0xff9ca3af, Typeface.NORMAL);
+        drinkCountText.setGravity(Gravity.CENTER);
+        col.addView(drinkCountText, lp(dp(6), 0, 0, 0));
+
         // Big BAC number
-        bacNumberText = tv("\u2014", 52, 0xfff3f4f6, Typeface.BOLD);
+        bacNumberText = tv("\u2014", 54, 0xfff3f4f6, Typeface.BOLD);
         bacNumberText.setGravity(Gravity.CENTER);
         bacNumberText.setIncludeFontPadding(false);
         LinearLayout.LayoutParams bacNumLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        bacNumLp.bottomMargin = dp(6);
+        bacNumLp.topMargin    = 0;
+        bacNumLp.bottomMargin = dp(2);
         col.addView(bacNumberText, bacNumLp);
 
         // Status badge
@@ -444,31 +467,26 @@ public class MainActivity extends Activity {
         bacLabelText.setLetterSpacing(0.1f);
         bacLabelText.setPadding(dp(12), dp(4), dp(12), dp(4));
         setLabelBackground(bacLabelText, COLOR_SOBER);
-        col.addView(bacLabelText, centredLp(dp(4)));
+        col.addView(bacLabelText, centredLp(dp(2)));
 
         // Sober-in time
         soberTimeText = tv("Waiting for data\u2026", 13, 0xfff3f4f6, Typeface.BOLD);
         soberTimeText.setGravity(Gravity.CENTER);
         col.addView(soberTimeText, lp(dp(10), 0, 0, 0));
 
-        // Drink count
-        drinkCountText = tv("", 11, 0xff9ca3af, Typeface.NORMAL);
-        drinkCountText.setGravity(Gravity.CENTER);
-        col.addView(drinkCountText, lp(dp(4), 0, 0, 0));
-
-        // Handle
-        handleText = tv("", 10, 0xff6b7280, Typeface.NORMAL);
-        handleText.setGravity(Gravity.CENTER);
-        col.addView(handleText, lp(dp(6), 0, 0, 0));
-
-        // Updated
-        updatedText = tv("", 9, 0xff4b5563, Typeface.NORMAL);
-        updatedText.setGravity(Gravity.CENTER);
-        col.addView(updatedText, lp(dp(2), 0, 0, 0));
-
         root.addView(col, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // Updated — pinned to bottom so it stays fixed regardless of content
+        updatedText = tv("", 9, 0xff4b5563, Typeface.NORMAL);
+        updatedText.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams updatedLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        updatedLp.bottomMargin = dp(14);
+        root.addView(updatedText, updatedLp);
 
         // Stale overlay
         staleText = tv("Data is stale", 11, 0xfffff8e8, Typeface.BOLD);
@@ -493,16 +511,6 @@ public class MainActivity extends Activity {
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         dndLp.bottomMargin = dp(22);
         root.addView(doNotDriveText, dndLp);
-
-        // "Powered by Untappd" logo
-        android.widget.ImageView logoView = new android.widget.ImageView(this);
-        logoView.setImageResource(R.drawable.pbu_yellow);
-        logoView.setAlpha(0.45f);
-        logoView.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-        FrameLayout.LayoutParams logoLp = new FrameLayout.LayoutParams(
-                dp(84), dp(20), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        logoLp.bottomMargin = dp(6);
-        root.addView(logoView, logoLp);
 
         // Pairing overlay — shown when no device token stored
         pairingOverlay = new FrameLayout(this);
@@ -570,6 +578,38 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
         root.addView(pairingOverlay, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // Splash overlay — shown on cold launch
+        splashOverlay = new FrameLayout(this);
+        splashOverlay.setBackgroundColor(BG_DEFAULT);
+
+        LinearLayout splashCol = new LinearLayout(this);
+        splashCol.setOrientation(LinearLayout.VERTICAL);
+        splashCol.setGravity(Gravity.CENTER);
+
+        TextView splashTitle = tv("un\u2019bac\u2019d", 28, COLOR_ACCENT, Typeface.BOLD);
+        splashTitle.setGravity(Gravity.CENTER);
+        splashTitle.setLetterSpacing(0.12f);
+        splashCol.addView(splashTitle, centredLp(0));
+
+        TextView splashBy = tv("by craftbeers.app", 11, 0xff6b7280, Typeface.NORMAL);
+        splashBy.setGravity(Gravity.CENTER);
+        splashCol.addView(splashBy, centredLp(dp(5)));
+
+        android.widget.ImageView splashLogo = new android.widget.ImageView(this);
+        splashLogo.setImageResource(R.drawable.pbu_yellow);
+        splashLogo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams splashLogoLp = new LinearLayout.LayoutParams(dp(100), dp(24));
+        splashLogoLp.topMargin = dp(18);
+        splashLogoLp.gravity = Gravity.CENTER_HORIZONTAL;
+        splashCol.addView(splashLogo, splashLogoLp);
+
+        splashOverlay.addView(splashCol, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(splashOverlay, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 

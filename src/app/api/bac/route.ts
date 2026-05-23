@@ -43,25 +43,26 @@ export async function GET(req: NextRequest) {
   // Stale — fetch fresh checkins and recalculate
   try {
     const raw = await fetchCheckins(user.untappdToken);
-    const checkins = raw.map(c => ({
-      createdAtMs:  parseUntappdDate(c.createdAt),
-      abv:          c.abv,
-      servingType:  c.servingType,
-    }));
+    const cutoffMs = Date.now() - 24 * 60 * 60_000;
+    const checkins = raw
+      .map(c => ({ createdAtMs: parseUntappdDate(c.createdAt), abv: c.abv, servingType: c.servingType }))
+      .filter(c => c.createdAtMs >= cutoffMs);
 
     const result = calculateBac(checkins, user.weightKg, user.gender);
 
     const cacheEntry = {
       ...result,
-      checkins: raw.map(c => ({
-        checkinId:   c.checkinId,
-        beerName:    c.beerName,
-        breweryName: c.breweryName,
-        style:       c.style,
-        abv:         c.abv,
-        servingType: c.servingType,
-        createdAtMs: parseUntappdDate(c.createdAt),
-      })),
+      checkins: raw
+        .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
+        .map(c => ({
+          checkinId:   c.checkinId,
+          beerName:    c.beerName,
+          breweryName: c.breweryName,
+          style:       c.style,
+          abv:         c.abv,
+          servingType: c.servingType,
+          createdAtMs: parseUntappdDate(c.createdAt),
+        })),
     };
     await setBacCache(device.userId, cacheEntry);
 

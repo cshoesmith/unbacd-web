@@ -1,7 +1,7 @@
 // BAC calculation — Widmark formula, mirroring BacCalculator.java
 
 const ELIMINATION_RATE_PER_HOUR = 0.015; // %/hr
-const SESSION_WINDOW_MS = 8 * 60 * 60_000; // 8 hours
+const SESSION_WINDOW_MS = 24 * 60 * 60_000; // 24 hours
 
 const SERVING_ML: Record<string, number> = {
   draft:          568, // pint

@@ -14,7 +14,7 @@ export class RateLimitError extends Error {
   constructor() { super('RATE_LIMITED'); this.name = 'RateLimitError'; }
 }
 
-export async function fetchCheckins(accessToken: string, limit = 25): Promise<UntappdCheckin[]> {
+export async function fetchCheckins(accessToken: string, limit = 50): Promise<UntappdCheckin[]> {
   const url = new URL(`${API_BASE}/user/checkins`);
   url.searchParams.set('access_token', accessToken);
   url.searchParams.set('limit', String(limit));
