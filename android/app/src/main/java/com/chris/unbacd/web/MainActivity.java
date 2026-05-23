@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private long    updatedAt        = 0L;
     private boolean syncRequestSent  = false;
     private boolean pollInFlight     = false;
+    private boolean pairingInFlight  = false;
     private String  deviceToken      = null;
 
     // Flash state for danger zone (BAC >= 0.15)
@@ -92,6 +93,7 @@ public class MainActivity extends Activity {
     private TextView doNotDriveText;
     private FrameLayout pairingOverlay;
     private EditText pinEditText;
+    private Button connectBtn;
 
     private final Runnable ticker = new Runnable() {
         @Override
@@ -203,11 +205,15 @@ public class MainActivity extends Activity {
     }
 
     private void submitPin(String rawPin) {
+        if (pairingInFlight) return;
         String pin = rawPin.trim().toUpperCase();
         if (pin.length() != 6) {
             Toast.makeText(this, "Enter 6-char PIN", Toast.LENGTH_SHORT).show();
             return;
         }
+        pairingInFlight = true;
+        connectBtn.setEnabled(false);
+        connectBtn.setText("…");
         String deviceId = Settings.Secure.getString(
                 getContentResolver(), Settings.Secure.ANDROID_ID);
         executor.execute(() -> {
@@ -235,6 +241,7 @@ public class MainActivity extends Activity {
                     String token = resp.optString("deviceToken", "");
                     if (!token.isEmpty()) {
                         handler.post(() -> {
+                            pairingInFlight = false;
                             deviceToken = token;
                             getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                                     .putString(PREF_DEVICE_TOKEN, token).apply();
@@ -243,16 +250,28 @@ public class MainActivity extends Activity {
                             pollWebApi();
                         });
                     } else {
-                        handler.post(() -> Toast.makeText(
-                                this, "Invalid response", Toast.LENGTH_SHORT).show());
+                        handler.post(() -> {
+                            pairingInFlight = false;
+                            connectBtn.setEnabled(true);
+                            connectBtn.setText("Connect");
+                            Toast.makeText(this, "Invalid response", Toast.LENGTH_SHORT).show();
+                        });
                     }
                 } else {
-                    handler.post(() -> Toast.makeText(
-                            this, "Wrong PIN or expired", Toast.LENGTH_SHORT).show());
+                    handler.post(() -> {
+                        pairingInFlight = false;
+                        connectBtn.setEnabled(true);
+                        connectBtn.setText("Connect");
+                        Toast.makeText(this, "Wrong PIN or expired", Toast.LENGTH_SHORT).show();
+                    });
                 }
             } catch (Exception e) {
-                handler.post(() -> Toast.makeText(
-                        this, "Connection error", Toast.LENGTH_SHORT).show());
+                handler.post(() -> {
+                    pairingInFlight = false;
+                    connectBtn.setEnabled(true);
+                    connectBtn.setText("Connect");
+                    Toast.makeText(this, "Connection error", Toast.LENGTH_SHORT).show();
+                });
             }
         });
     }
@@ -531,7 +550,7 @@ public class MainActivity extends Activity {
             return false;
         });
 
-        Button connectBtn = new Button(this);
+        connectBtn = new Button(this);
         connectBtn.setText("Connect");
         connectBtn.setTextColor(0xff080604);
         connectBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
