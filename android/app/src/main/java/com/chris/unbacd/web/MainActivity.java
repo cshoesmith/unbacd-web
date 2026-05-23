@@ -219,7 +219,7 @@ public class MainActivity extends Activity {
             } else {
                 refreshAll();
             }
-        }, 2500);
+        }, 5000);
     }
 
     private void submitPin(String rawPin) {
@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
     private void refreshAll() {
         if (currentBac < 0) { showNoData(); return; }
         titleText.setText("un'bac'd");
-        bacNumberText.setText(String.format(java.util.Locale.US, "%.3f", currentBac));
+        bacNumberText.setText(String.format(java.util.Locale.US, "%.2f", currentBac));
         bacLabelText.setText(bacLabel(currentBac));
         applyTheme(currentBac);
         refreshTickedViews();
@@ -434,35 +434,57 @@ public class MainActivity extends Activity {
         col.setGravity(Gravity.CENTER);
         col.setPadding(dp(18), dp(18), dp(18), dp(18));
 
-        // "un'bac'd" title
-        titleText = tv("un'bac'd", 11, COLOR_ACCENT, Typeface.BOLD);
+        // "un'bac'd" title — pinned to top of screen (added to root below)
+        titleText = tv("un'bac'd", 13, COLOR_ACCENT, Typeface.BOLD);
         titleText.setGravity(Gravity.CENTER);
         titleText.setLetterSpacing(0.12f);
-        col.addView(titleText, lp(0, 0, 0, dp(2)));
 
-        // Handle (Untappd username — below title)
-        handleText = tv("", 10, 0xff4b5563, Typeface.NORMAL);
+        // Handle (Untappd username)
+        handleText = tv("", 12, 0xff4b5563, Typeface.NORMAL);
         handleText.setGravity(Gravity.CENTER);
         col.addView(handleText, lp(dp(3), 0, 0, 0));
 
         // Drink count (above BAC number)
-        drinkCountText = tv("", 11, 0xff9ca3af, Typeface.NORMAL);
+        drinkCountText = tv("", 13, 0xff9ca3af, Typeface.NORMAL);
         drinkCountText.setGravity(Gravity.CENTER);
         col.addView(drinkCountText, lp(dp(6), 0, 0, 0));
 
-        // Big BAC number
+        // Big BAC number + unit labels row
+        LinearLayout bacRow = new LinearLayout(this);
+        bacRow.setOrientation(LinearLayout.HORIZONTAL);
+        bacRow.setGravity(Gravity.CENTER);
+
         bacNumberText = tv("\u2014", 54, 0xfff3f4f6, Typeface.BOLD);
-        bacNumberText.setGravity(Gravity.CENTER);
         bacNumberText.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams bacNumLp = new LinearLayout.LayoutParams(
+        bacRow.addView(bacNumberText, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout unitCol = new LinearLayout(this);
+        unitCol.setOrientation(LinearLayout.VERTICAL);
+        unitCol.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams unitColLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        unitColLp.leftMargin = dp(5);
+        unitColLp.bottomMargin = dp(2);
+        TextView bacUnitText = tv("%BAC", 14, 0xfff3f4f6, Typeface.BOLD);
+        bacUnitText.setIncludeFontPadding(false);
+        TextView bacEstText = tv("(est)", 13, 0xff9ca3af, Typeface.NORMAL);
+        bacEstText.setIncludeFontPadding(false);
+        unitCol.addView(bacUnitText);
+        unitCol.addView(bacEstText);
+        bacRow.addView(unitCol, unitColLp);
+
+        LinearLayout.LayoutParams bacRowLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        bacNumLp.topMargin    = 0;
-        bacNumLp.bottomMargin = dp(2);
-        col.addView(bacNumberText, bacNumLp);
+        bacRowLp.topMargin    = 0;
+        bacRowLp.bottomMargin = dp(2);
+        col.addView(bacRow, bacRowLp);
 
         // Status badge
-        bacLabelText = tv("WAITING", 10, 0xff080604, Typeface.BOLD);
+        bacLabelText = tv("WAITING", 12, 0xff080604, Typeface.BOLD);
         bacLabelText.setGravity(Gravity.CENTER);
         bacLabelText.setLetterSpacing(0.1f);
         bacLabelText.setPadding(dp(12), dp(4), dp(12), dp(4));
@@ -470,7 +492,7 @@ public class MainActivity extends Activity {
         col.addView(bacLabelText, centredLp(dp(2)));
 
         // Sober-in time
-        soberTimeText = tv("Waiting for data\u2026", 13, 0xfff3f4f6, Typeface.BOLD);
+        soberTimeText = tv("Waiting for data\u2026", 15, 0xfff3f4f6, Typeface.BOLD);
         soberTimeText.setGravity(Gravity.CENTER);
         col.addView(soberTimeText, lp(dp(10), 0, 0, 0));
 
@@ -478,8 +500,16 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
+        // Title — pinned to top
+        FrameLayout.LayoutParams titleLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        titleLp.topMargin = dp(12);
+        root.addView(titleText, titleLp);
+
         // Updated — pinned to bottom so it stays fixed regardless of content
-        updatedText = tv("", 9, 0xff4b5563, Typeface.NORMAL);
+        updatedText = tv("", 11, 0xff4b5563, Typeface.NORMAL);
         updatedText.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams updatedLp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -489,7 +519,7 @@ public class MainActivity extends Activity {
         root.addView(updatedText, updatedLp);
 
         // Stale overlay
-        staleText = tv("Data is stale", 11, 0xfffff8e8, Typeface.BOLD);
+        staleText = tv("Data is stale", 13, 0xfffff8e8, Typeface.BOLD);
         staleText.setGravity(Gravity.CENTER);
         staleText.setPadding(dp(14), dp(10), dp(14), dp(10));
         staleText.setBackground(roundRect(0xcc080604, 18));
@@ -499,7 +529,7 @@ public class MainActivity extends Activity {
         root.addView(staleText, staleLp);
 
         // DO NOT DRIVE overlay (shown when BAC >= 0.15)
-        doNotDriveText = tv("DO NOT DRIVE", 14, 0xffffffff, Typeface.BOLD);
+        doNotDriveText = tv("DO NOT DRIVE", 16, 0xffffffff, Typeface.BOLD);
         doNotDriveText.setGravity(Gravity.CENTER);
         doNotDriveText.setLetterSpacing(0.10f);
         doNotDriveText.setPadding(dp(18), dp(10), dp(18), dp(10));
@@ -522,12 +552,12 @@ public class MainActivity extends Activity {
         pairCol.setGravity(Gravity.CENTER);
         pairCol.setPadding(dp(20), dp(20), dp(20), dp(20));
 
-        TextView pairTitle = tv("un'bac'd", 12, COLOR_ACCENT, Typeface.BOLD);
+        TextView pairTitle = tv("un'bac'd", 14, COLOR_ACCENT, Typeface.BOLD);
         pairTitle.setGravity(Gravity.CENTER);
         pairTitle.setLetterSpacing(0.12f);
         pairCol.addView(pairTitle, lp(0, dp(8), 0, 0));
 
-        TextView pairInstr = tv("Enter PIN\nfrom web app", 11, 0xff9ca3af, Typeface.NORMAL);
+        TextView pairInstr = tv("Enter PIN\nfrom web app", 13, 0xff9ca3af, Typeface.NORMAL);
         pairInstr.setGravity(Gravity.CENTER);
         pairCol.addView(pairInstr, lp(0, dp(10), 0, 0));
 
@@ -535,7 +565,7 @@ public class MainActivity extends Activity {
         pinEditText.setHint("ABC123");
         pinEditText.setHintTextColor(0xff4b5563);
         pinEditText.setTextColor(COLOR_ACCENT);
-        pinEditText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18);
+        pinEditText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 20);
         pinEditText.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         pinEditText.setGravity(Gravity.CENTER);
         pinEditText.setInputType(InputType.TYPE_CLASS_TEXT
@@ -561,7 +591,7 @@ public class MainActivity extends Activity {
         connectBtn = new Button(this);
         connectBtn.setText("Connect");
         connectBtn.setTextColor(0xff080604);
-        connectBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+        connectBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
         connectBtn.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         connectBtn.setBackground(roundRect(COLOR_ACCENT, 999));
         connectBtn.setPadding(dp(24), dp(8), dp(24), dp(8));
@@ -589,26 +619,28 @@ public class MainActivity extends Activity {
         splashCol.setOrientation(LinearLayout.VERTICAL);
         splashCol.setGravity(Gravity.CENTER);
 
-        TextView splashTitle = tv("un\u2019bac\u2019d", 28, COLOR_ACCENT, Typeface.BOLD);
+        TextView splashTitle = tv("un\u2019bac\u2019d", 30, COLOR_ACCENT, Typeface.BOLD);
         splashTitle.setGravity(Gravity.CENTER);
         splashTitle.setLetterSpacing(0.12f);
         splashCol.addView(splashTitle, centredLp(0));
 
-        TextView splashBy = tv("by craftbeers.app", 11, 0xff6b7280, Typeface.NORMAL);
+        TextView splashBy = tv("by craftbeers.app", 13, 0xff6b7280, Typeface.NORMAL);
         splashBy.setGravity(Gravity.CENTER);
         splashCol.addView(splashBy, centredLp(dp(5)));
-
-        android.widget.ImageView splashLogo = new android.widget.ImageView(this);
-        splashLogo.setImageResource(R.drawable.pbu_yellow);
-        splashLogo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams splashLogoLp = new LinearLayout.LayoutParams(dp(100), dp(24));
-        splashLogoLp.topMargin = dp(18);
-        splashLogoLp.gravity = Gravity.CENTER_HORIZONTAL;
-        splashCol.addView(splashLogo, splashLogoLp);
 
         splashOverlay.addView(splashCol, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // PBU logo — pinned to bottom of splash
+        android.widget.ImageView splashLogo = new android.widget.ImageView(this);
+        splashLogo.setImageResource(R.drawable.pbu_yellow);
+        splashLogo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        FrameLayout.LayoutParams splashLogoLp = new FrameLayout.LayoutParams(
+                dp(100), dp(24), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        splashLogoLp.bottomMargin = dp(18);
+        splashOverlay.addView(splashLogo, splashLogoLp);
+
         root.addView(splashOverlay, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
