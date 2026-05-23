@@ -32,7 +32,17 @@ interface SyncResult {
 }
 
 function BacCircle({ bac }: { bac: number | null }) {
-  const color = bac !== null ? bacColor(bac) : '#080604';
+  const [flashPhase, setFlashPhase] = useState(false);
+  const flashing = bac !== null && bac >= 0.20;
+
+  useEffect(() => {
+    if (!flashing) { setFlashPhase(false); return; }
+    const t = setInterval(() => setFlashPhase(p => !p), 500);
+    return () => clearInterval(t);
+  }, [flashing]);
+
+  const baseColor = bac !== null ? bacColor(bac) : '#080604';
+  const color = flashing ? (flashPhase ? '#1e40af' : '#dc2626') : baseColor;
   const label = bac !== null ? bacLabel(bac) : 'WAITING';
   const isDark = color === '#080604';
   const badgeColor = isDark ? '#9ca3af' : 'rgba(0,0,0,0.2)';
@@ -44,7 +54,7 @@ function BacCircle({ bac }: { bac: number | null }) {
       style={{
         width: 220, height: 220,
         backgroundColor: color,
-        transition: 'background-color 0.6s ease',
+        transition: flashing ? 'none' : 'background-color 0.6s ease',
       }}
     >
       {/* BAC number */}
@@ -70,7 +80,7 @@ function BacCircle({ bac }: { bac: number | null }) {
 
 function SoberLine({ bac, soberMs }: { bac: number | null; soberMs: number | null }) {
   if (bac === null) return null;
-  if (bac < 0.001) return null; // badge says SOBER — no line needed
+  if (bac < 0.02) return null; // SOBER — no line needed
   if (!soberMs || soberMs <= 0) {
     return <p className="text-[#9ca3af] text-sm text-center">Sober now</p>;
   }
@@ -101,6 +111,19 @@ function timeSince(createdAtMs: number, now: number): string {
   if (hrs > 0)            return `${hrs}h ago`;
   if (mins > 0)           return `${mins}m ago`;
   return 'just now';
+}
+
+function BacWarning({ bac }: { bac: number | null }) {
+  if (bac === null || bac < 0.05) return null;
+  const isDontWalk = bac >= 0.20;
+  return (
+    <span
+      className="font-black text-sm tracking-[0.2em] px-4 py-2 rounded-xl text-white"
+      style={{ backgroundColor: isDontWalk ? '#1e40af' : '#dc2626' }}
+    >
+      {isDontWalk ? '⚠️ DO NOT WALK' : 'DO NOT DRIVE'}
+    </span>
+  );
 }
 
 function DrinkList({
@@ -340,6 +363,9 @@ export default function DashboardClient({
 
       {/* Sober time */}
       <SoberLine bac={bac} soberMs={soberMs} />
+
+      {/* DO NOT DRIVE / DO NOT WALK warning */}
+      <BacWarning bac={bac} />
 
       {/* Drink count + last sync */}
       <div className="flex flex-col items-center gap-1">

@@ -42,12 +42,15 @@ public class MainActivity extends Activity {
     private static final String WEB_API_BASE      = "https://unbacd-web.vercel.app";
 
     // BAC thresholds
-    private static final double BAC_CAUTION = 0.10;
-    private static final double BAC_DANGER  = 0.15;
+    private static final double BAC_DO_NOT_DRIVE = 0.05;
+    private static final double BAC_CAUTION      = 0.12;
+    private static final double BAC_DANGER       = 0.20;
 
     // Colors
     private static final int BG_DEFAULT     = 0xff080604;
-    private static final int BG_GREEN       = 0xff16a34a;
+    private static final int BG_ORANGE_LT   = 0xfffb923c;
+    private static final int BG_ORANGE      = 0xfff97316;
+    private static final int BG_RED_LT      = 0xffef4444;
     private static final int BG_RED         = 0xffdc2626;
     private static final int BG_DANGER_BLUE = 0xff1e40af;
     private static final int COLOR_SOBER    = 0xff9ca3af;
@@ -68,7 +71,7 @@ public class MainActivity extends Activity {
     private boolean pairingInFlight  = false;
     private String  deviceToken      = null;
 
-    // Flash state for danger zone (BAC >= 0.15)
+    // Flash state for danger zone (BAC >= 0.20)
     private boolean isFlashing = false;
     private boolean flashPhase = false;
     private final Handler flashHandler = new Handler(Looper.getMainLooper());
@@ -92,6 +95,7 @@ public class MainActivity extends Activity {
     private TextView updatedText;
     private TextView staleText;
     private TextView doNotDriveText;
+    private TextView doNotWalkText;
     private FrameLayout pairingOverlay;
     private FrameLayout splashOverlay;
     private EditText pinEditText;
@@ -358,8 +362,10 @@ public class MainActivity extends Activity {
     // ── Theme ─────────────────────────────────────────────────────────────────
 
     private int bacBgColor(double bac) {
-        if (bac < 0.001)       return BG_DEFAULT;
-        if (bac < BAC_CAUTION) return BG_GREEN;
+        if (bac < 0.02)          return BG_DEFAULT;
+        if (bac < BAC_DO_NOT_DRIVE) return BG_ORANGE_LT;
+        if (bac < 0.07)          return BG_ORANGE;
+        if (bac < BAC_CAUTION)   return BG_RED_LT;
         return BG_RED;
     }
 
@@ -375,7 +381,8 @@ public class MainActivity extends Activity {
             flashHandler.removeCallbacks(flashRunnable);
         }
 
-        doNotDriveText.setVisibility(danger ? View.VISIBLE : View.GONE);
+        doNotDriveText.setVisibility((bac >= BAC_DO_NOT_DRIVE && !danger) ? View.VISIBLE : View.GONE);
+        doNotWalkText.setVisibility(danger ? View.VISIBLE : View.GONE);
 
         int bg = bac < 0 ? BG_DEFAULT : bacBgColor(bac);
         if (!danger) rootLayout.setBackgroundColor(bg);
@@ -398,10 +405,11 @@ public class MainActivity extends Activity {
     }
 
     private String bacLabel(double bac) {
-        if (bac < 0.001)       return "SOBER";
-        if (bac < 0.05)        return "TRACE";
-        if (bac < BAC_CAUTION) return "TIPSY";
-        if (bac < BAC_DANGER)  return "OVER LIMIT";
+        if (bac < 0.02)            return "SOBER";
+        if (bac < BAC_DO_NOT_DRIVE) return "TRACE";
+        if (bac < 0.07)            return "TIPSY";
+        if (bac < BAC_CAUTION)     return "CAUTION";
+        if (bac < BAC_DANGER)      return "OVER LIMIT";
         return "DANGER";
     }
 
@@ -528,12 +536,12 @@ public class MainActivity extends Activity {
                 dp(178), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         root.addView(staleText, staleLp);
 
-        // DO NOT DRIVE overlay (shown when BAC >= 0.15)
+        // DO NOT DRIVE overlay (shown when 0.05 ≤ BAC < 0.20)
         doNotDriveText = tv("DO NOT DRIVE", 16, 0xffffffff, Typeface.BOLD);
         doNotDriveText.setGravity(Gravity.CENTER);
         doNotDriveText.setLetterSpacing(0.10f);
         doNotDriveText.setPadding(dp(18), dp(10), dp(18), dp(10));
-        doNotDriveText.setBackground(roundRect(0xdd000000, 14));
+        doNotDriveText.setBackground(roundRect(0xdddc2626, 14));
         doNotDriveText.setVisibility(View.GONE);
         FrameLayout.LayoutParams dndLp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -541,6 +549,20 @@ public class MainActivity extends Activity {
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         dndLp.bottomMargin = dp(22);
         root.addView(doNotDriveText, dndLp);
+
+        // DO NOT WALK overlay (shown when BAC ≥ 0.20, replaces DO NOT DRIVE)
+        doNotWalkText = tv("DO NOT WALK", 16, 0xffffffff, Typeface.BOLD);
+        doNotWalkText.setGravity(Gravity.CENTER);
+        doNotWalkText.setLetterSpacing(0.10f);
+        doNotWalkText.setPadding(dp(18), dp(10), dp(18), dp(10));
+        doNotWalkText.setBackground(roundRect(0xdd1e40af, 14));
+        doNotWalkText.setVisibility(View.GONE);
+        FrameLayout.LayoutParams dnwLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        dnwLp.bottomMargin = dp(22);
+        root.addView(doNotWalkText, dnwLp);
 
         // Pairing overlay — shown when no device token stored
         pairingOverlay = new FrameLayout(this);

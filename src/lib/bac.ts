@@ -69,18 +69,21 @@ export function calculateBac(
 }
 
 export function bacLabel(bac: number): string {
-  if (bac < 0.001) return 'SOBER';
+  if (bac < 0.02)  return 'SOBER';
   if (bac < 0.05)  return 'TRACE';
-  if (bac < 0.10)  return 'TIPSY';
-  if (bac < 0.15)  return 'OVER LIMIT';
+  if (bac < 0.07)  return 'TIPSY';
+  if (bac < 0.12)  return 'CAUTION';
+  if (bac < 0.20)  return 'OVER LIMIT';
   return 'DANGER';
 }
 
 export function bacColor(bac: number): string {
-  if (bac < 0.001) return '#080604'; // dark
-  if (bac < 0.10)  return '#16a34a'; // green
-  if (bac < 0.15)  return '#dc2626'; // red
-  return '#1e40af';                  // blue (danger)
+  if (bac < 0.02)  return '#080604';  // dark/sober
+  if (bac < 0.05)  return '#fb923c';  // light orange
+  if (bac < 0.07)  return '#f97316';  // orange
+  if (bac < 0.12)  return '#ef4444';  // light red
+  if (bac < 0.20)  return '#dc2626';  // red
+  return '#dc2626';                    // ≥ 0.20: component handles police-lights flash
 }
 
 export function formatDuration(ms: number): string {
