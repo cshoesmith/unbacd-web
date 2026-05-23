@@ -4,32 +4,33 @@ import { getIronSession }            from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { getUser, setUser }          from '@/lib/kv';
 
-const CLIENT_ID     = process.env.UNTAPPD_CLIENT_ID!;
-const CLIENT_SECRET = process.env.UNTAPPD_CLIENT_SECRET!;
-const BASE_URL      = process.env.NEXT_PUBLIC_BASE_URL!;
-const CALLBACK_URL  = `${BASE_URL}/api/auth/callback`;
+const PROXY_BASE = 'https://utpd-oauth.craftbeers.app';
+const BASE_URL   = process.env.NEXT_PUBLIC_BASE_URL!;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const code  = searchParams.get('code');
-  // Untappd doesn't always echo back state — we skip strict state check for now
-  // (the callback URL itself is HTTPS-only in production)
+  const tokenCode    = searchParams.get('token_code');
+  const returnedState = searchParams.get('state');
+  const cookieState  = req.cookies.get('oauth_state')?.value;
 
-  if (!code) {
+  if (!tokenCode) {
     return NextResponse.redirect(new URL('/login?error=missing_code', BASE_URL));
   }
 
-  // Exchange authorization code for access token
-  const tokenUrl = new URL('https://untappd.com/oauth/authorize/');
-  tokenUrl.searchParams.set('client_id',     CLIENT_ID);
-  tokenUrl.searchParams.set('client_secret', CLIENT_SECRET);
-  tokenUrl.searchParams.set('response_type', 'token');
-  tokenUrl.searchParams.set('redirect_url',  CALLBACK_URL);
-  tokenUrl.searchParams.set('code',          code);
+  // CSRF state check (state is optional on the proxy but we always set it)
+  if (cookieState && returnedState && returnedState !== cookieState) {
+    return NextResponse.redirect(new URL('/login?error=invalid_state', BASE_URL));
+  }
 
-  const tokenRes  = await fetch(tokenUrl.toString(), { cache: 'no-store' });
-  const tokenData = await tokenRes.json();
-  const accessToken: string | undefined = tokenData?.response?.access_token;
+  // Exchange token_code for real Untappd access token via proxy
+  const exchangeRes = await fetch(`${PROXY_BASE}/get-token`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body:    JSON.stringify({ token_code: tokenCode }),
+    cache:   'no-store',
+  });
+  const exchangeData = await exchangeRes.json();
+  const accessToken: string | undefined = exchangeData?.access_token;
 
   if (!accessToken) {
     return NextResponse.redirect(new URL('/login?error=auth_failed', BASE_URL));
