@@ -642,11 +642,11 @@ public class MainActivity extends Activity {
         splashCol.setGravity(Gravity.CENTER);
 
         android.widget.ImageView splashIcon = new android.widget.ImageView(this);
-        splashIcon.setImageResource(R.mipmap.ic_launcher);
+        splashIcon.setImageResource(R.mipmap.ic_launcher_foreground);
         splashIcon.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams splashIconLp = new LinearLayout.LayoutParams(dp(72), dp(72));
+        LinearLayout.LayoutParams splashIconLp = new LinearLayout.LayoutParams(dp(60), dp(60));
         splashIconLp.gravity = Gravity.CENTER_HORIZONTAL;
-        splashIconLp.bottomMargin = dp(16);
+        splashIconLp.bottomMargin = dp(8);
         splashCol.addView(splashIcon, splashIconLp);
 
         TextView splashTitle = tv("un\u2019bac\u2019d", 30, COLOR_ACCENT, Typeface.BOLD);
