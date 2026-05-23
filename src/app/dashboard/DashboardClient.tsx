@@ -15,6 +15,14 @@ interface Props {
   initialCheckins: CachedCheckin[];
 }
 
+interface SettingsResult {
+  bac?: number;
+  soberMs?: number;
+  drinkCount?: number;
+  calculatedAt?: number;
+  checkins?: CachedCheckin[];
+}
+
 interface SyncResult {
   bac: number;
   soberMs: number;
@@ -208,6 +216,12 @@ export default function DashboardClient({
   const [pendingCheckinIds, setPendingCheckinIds] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
 
+  const [weightKg,   setWeightKg]   = useState(initialWeight);
+  const [gender,     setGender]     = useState<'male' | 'female'>(initialGender);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState({ weightKg: initialWeight, gender: initialGender as 'male' | 'female' });
+
   const [syncing,      setSyncing]      = useState(false);
   const [syncError,    setSyncError]    = useState<string | null>(null);
   const [pin,          setPin]          = useState<string | null>(null);
@@ -267,6 +281,29 @@ export default function DashboardClient({
       setPendingCheckinIds(s => { const n = new Set(s); n.delete(checkinId); return n; });
     }
   }, []);
+
+  const saveSettings = useCallback(async () => {
+    setSettingsSaving(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsDraft),
+      });
+      if (!res.ok) return;
+      const data: SettingsResult = await res.json();
+      setWeightKg(settingsDraft.weightKg);
+      setGender(settingsDraft.gender);
+      if (data.bac !== undefined)         setBac(data.bac);
+      if (data.soberMs !== undefined)     setSoberMs(data.soberMs);
+      if (data.drinkCount !== undefined)  setDrinkCount(data.drinkCount);
+      if (data.calculatedAt !== undefined) setCalculatedAt(data.calculatedAt);
+      if (data.checkins)                  setCheckins(data.checkins);
+      setShowSettings(false);
+    } finally {
+      setSettingsSaving(false);
+    }
+  }, [settingsDraft]);
 
   // Auto-refresh every 5 min
   useEffect(() => {
@@ -336,7 +373,77 @@ export default function DashboardClient({
         >
           {pairLoading ? 'Generating…' : 'Pair Watch'}
         </button>
+
+        <button
+          onClick={() => { setSettingsDraft({ weightKg, gender }); setShowSettings(s => !s); }}
+          className="bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-3 py-2.5 rounded-xl transition-colors"
+          aria-label="Settings"
+        >
+          ⚙️
+        </button>
       </div>
+
+      {/* Settings panel */}
+      {showSettings && (
+        <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+          <h2 className="text-[#9ca3af] text-xs uppercase tracking-widest">Body settings</h2>
+
+          {/* Gender */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#6b7280] text-xs">Biological sex (affects BAC calculation)</label>
+            <div className="flex gap-2">
+              {(['male', 'female'] as const).map(g => (
+                <button
+                  key={g}
+                  onClick={() => setSettingsDraft(d => ({ ...d, gender: g }))}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    settingsDraft.gender === g
+                      ? 'bg-[#ffd166] text-[#080604]'
+                      : 'bg-white/5 text-[#9ca3af] hover:bg-white/10'
+                  }`}
+                >
+                  {g.charAt(0).toUpperCase() + g.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Weight */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#6b7280] text-xs">Body weight</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={40}
+                max={200}
+                step={1}
+                value={settingsDraft.weightKg}
+                onChange={e => setSettingsDraft(d => ({ ...d, weightKg: Number(e.target.value) }))}
+                className="flex-1 accent-[#ffd166]"
+              />
+              <span className="text-white text-sm font-mono w-14 text-right">
+                {settingsDraft.weightKg} kg
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={saveSettings}
+              disabled={settingsSaving}
+              className="flex-1 bg-[#ffd166] hover:bg-[#ffd166]/90 disabled:opacity-50 text-[#080604] text-sm font-bold py-2.5 rounded-xl transition-colors"
+            >
+              {settingsSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="px-4 bg-white/5 hover:bg-white/10 text-[#9ca3af] text-sm rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* PIN display */}
       {pin && (
