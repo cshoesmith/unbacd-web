@@ -3,7 +3,10 @@ import { cookies }                   from 'next/headers';
 import { getIronSession }            from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { setPin, consumePin, setDevice } from '@/lib/kv';
-import { nanoid } from 'nanoid';
+import { customAlphabet } from 'nanoid';
+
+// Only uppercase letters + digits — no ambiguous symbols that are hard to type on a watch
+const generatePin = customAlphabet('ABCDEFGHJKMNPQRSTUVWXYZ23456789', 6);
 
 /**
  * POST /api/pair
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Generate a 6-char alphanumeric PIN (uppercase, easy to type on a watch)
-  const pin = nanoid(6).toUpperCase();
+  const pin = generatePin();
   await setPin(pin, session.userId);
 
   return NextResponse.json({ pin, expiresInSeconds: 600 });
