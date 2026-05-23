@@ -354,7 +354,10 @@ export default function DashboardClient({
 
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between">
-        <h1 className="text-2xl font-black text-[#ffd166] tracking-widest">un'bac'd</h1>
+        <div className="flex items-center gap-2.5">
+          <img src="/unbacd.png" alt="un'bac'd" width={36} height={36} className="rounded-lg" />
+          <h1 className="text-2xl font-black text-[#ffd166] tracking-widest">un'bac'd</h1>
+        </div>
         <span className="text-[#6b7280] text-xs">@{username}</span>
       </div>
 
