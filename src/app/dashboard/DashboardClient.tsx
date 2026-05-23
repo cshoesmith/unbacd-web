@@ -350,7 +350,7 @@ export default function DashboardClient({
     : 'Not yet synced';
 
   return (
-    <main className="min-h-screen bg-[#080604] flex flex-col items-center px-4 py-8 gap-6">
+    <main className="min-h-screen bg-[#080604] flex flex-col items-center px-4 py-4 gap-4">
 
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between">
@@ -361,29 +361,31 @@ export default function DashboardClient({
         <span className="text-[#6b7280] text-xs">@{username}</span>
       </div>
 
-      {/* BAC circle */}
-      <BacCircle bac={bac} />
+      {/* BAC circle + all status messages grouped tightly */}
+      <div className="flex flex-col items-center gap-2">
+        <BacCircle bac={bac} />
 
-      {/* Sober time */}
-      <SoberLine bac={bac} soberMs={soberMs} />
+        {/* Sober time */}
+        <SoberLine bac={bac} soberMs={soberMs} />
 
-      {/* DO NOT DRIVE / DO NOT WALK warning */}
-      <BacWarning bac={bac} />
+        {/* DO NOT DRIVE / DO NOT WALK warning */}
+        <BacWarning bac={bac} />
 
-      {/* Drink count + last sync */}
-      <div className="flex flex-col items-center gap-1">
-        {drinkCount !== null && (
-          <p className="text-[#9ca3af] text-sm">
-            {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 24h window
-          </p>
+        {/* Drink count + last sync */}
+        <div className="flex flex-col items-center gap-1">
+          {drinkCount !== null && (
+            <p className="text-[#9ca3af] text-sm">
+              {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 24h window
+            </p>
+          )}
+          <p className="text-[#4b5563] text-xs">{lastSyncText}</p>
+        </div>
+
+        {/* Sync error */}
+        {syncError && (
+          <p className="text-red-400 text-xs">{syncError}</p>
         )}
-        <p className="text-[#4b5563] text-xs">{lastSyncText}</p>
       </div>
-
-      {/* Sync error */}
-      {syncError && (
-        <p className="text-red-400 text-xs">{syncError}</p>
-      )}
 
       {/* Action buttons */}
       <div className="flex gap-3">
