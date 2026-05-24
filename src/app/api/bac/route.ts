@@ -3,13 +3,17 @@ import { getDevice, getUser, getBacCache, setBacCache } from '@/lib/kv';
 import { fetchCheckins, parseUntappdDate, RateLimitError } from '@/lib/untappd';
 import { calculateBac } from '@/lib/bac';
 
-const CACHE_FRESH_MS = 5 * 60_000; // serve cached result if < 5 min old
+// Only re-fetch checkins from Untappd if data is older than this.
+// BAC is always recalculated at the current time regardless.
+const UNTAPPD_FRESH_MS = 5 * 60_000;
 
 /**
  * GET /api/bac?device={token}
  *
- * Called by the Wear OS watch on every 30-second tick.
- * Returns current BAC data, triggering a fresh Untappd sync if the cache is stale.
+ * Called by the Wear OS watch on its own polling cadence.
+ * BAC is always recalculated from the cached checkin list at the current
+ * timestamp — the watch drives when updates happen.  A fresh Untappd fetch
+ * is only triggered when the checkin data itself is older than UNTAPPD_FRESH_MS.
  */
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('device');
@@ -27,14 +31,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 });
   }
 
-  // Return cached result if still fresh
   const cached = await getBacCache(device.userId);
-  if (cached && Date.now() - cached.calculatedAt < CACHE_FRESH_MS) {
+
+  // Checkin data is fresh — recalculate BAC right now from the cached list.
+  // The watch controls the cadence; the server just does the math.
+  if (cached && Date.now() - cached.calculatedAt < UNTAPPD_FRESH_MS) {
+    const result = calculateBac(
+      cached.checkins.map(c => ({
+        createdAtMs:      c.createdAtMs,
+        abv:              c.abv,
+        servingType:      c.servingType,
+        volumeMlOverride: c.volumeMlOverride,
+      })),
+      user.weightKg,
+      user.gender,
+    );
     return NextResponse.json({
-      bac:          cached.bac,
-      soberMs:      cached.soberMs,
-      drinkCount:   cached.drinkCount,
-      calculatedAt: cached.calculatedAt,
+      bac:          result.bac,
+      soberMs:      result.soberMs,
+      drinkCount:   result.drinkCount,
+      calculatedAt: result.calculatedAt,
       username:     user.username,
       fromCache:    true,
     });
@@ -89,12 +105,22 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     if (err instanceof RateLimitError && cached) {
-      // Serve stale cache rather than erroring during rate-limit windows
+      // Rate-limited — recalculate BAC from cached checkins rather than erroring
+      const result = calculateBac(
+        cached.checkins.map(c => ({
+          createdAtMs:      c.createdAtMs,
+          abv:              c.abv,
+          servingType:      c.servingType,
+          volumeMlOverride: c.volumeMlOverride,
+        })),
+        user.weightKg,
+        user.gender,
+      );
       return NextResponse.json({
-        bac:          cached.bac,
-        soberMs:      cached.soberMs,
-        drinkCount:   cached.drinkCount,
-        calculatedAt: cached.calculatedAt,
+        bac:          result.bac,
+        soberMs:      result.soberMs,
+        drinkCount:   result.drinkCount,
+        calculatedAt: result.calculatedAt,
         username:     user.username,
         fromCache:    true,
         stale:        true,
