@@ -540,7 +540,7 @@ public class MainActivity extends Activity {
         doNotDriveText = tv("DO NOT DRIVE", 16, 0xffffffff, Typeface.BOLD);
         doNotDriveText.setGravity(Gravity.CENTER);
         doNotDriveText.setLetterSpacing(0.10f);
-        doNotDriveText.setPadding(dp(18), dp(10), dp(18), dp(10));
+        doNotDriveText.setPadding(dp(18), dp(6), dp(18), dp(6));
         doNotDriveText.setBackground(roundRect(0xdddc2626, 14));
         doNotDriveText.setVisibility(View.GONE);
         FrameLayout.LayoutParams dndLp = new FrameLayout.LayoutParams(
@@ -554,7 +554,7 @@ public class MainActivity extends Activity {
         doNotWalkText = tv("DO NOT WALK", 16, 0xffffffff, Typeface.BOLD);
         doNotWalkText.setGravity(Gravity.CENTER);
         doNotWalkText.setLetterSpacing(0.10f);
-        doNotWalkText.setPadding(dp(18), dp(10), dp(18), dp(10));
+        doNotWalkText.setPadding(dp(18), dp(6), dp(18), dp(6));
         doNotWalkText.setBackground(roundRect(0xdd1e40af, 14));
         doNotWalkText.setVisibility(View.GONE);
         FrameLayout.LayoutParams dnwLp = new FrameLayout.LayoutParams(
