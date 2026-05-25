@@ -86,10 +86,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ...result, checkins: updatedCheckins });
 }
-    user.gender,
-  );
-
-  await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
-
-  return NextResponse.json({ ...result, checkins: updatedCheckins });
-}
