@@ -4,6 +4,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: "un'bac'd",
   description: 'Real-time BAC tracking, powered by Untappd',
+  icons: {
+    icon: '/unbacd.png',
+    shortcut: '/unbacd.png',
+    apple: '/unbacd.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
