@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
   // Recalculate BAC from cached checkins with new body parameters
   const cache = await getBacCache(session.userId);
   if (cache) {
+    const cutoffMs = Date.now() - 24 * 60 * 60_000;
+    const activeCheckins = cache.checkins.filter(c => !c.phantom || c.createdAtMs >= cutoffMs);
     const result = calculateBac(
-      cache.checkins.map(c => ({
+      activeCheckins.map(c => ({
         createdAtMs:      c.createdAtMs,
         abv:              c.abv,
         servingType:      c.servingType,
@@ -49,8 +51,8 @@ export async function POST(req: NextRequest) {
       weightKg,
       gender,
     );
-    await setBacCache(session.userId, { ...result, checkins: cache.checkins });
-    return NextResponse.json({ ...result, checkins: cache.checkins });
+    await setBacCache(session.userId, { ...result, checkins: activeCheckins });
+    return NextResponse.json({ ...result, checkins: activeCheckins });
   }
 
   return NextResponse.json({ ok: true });

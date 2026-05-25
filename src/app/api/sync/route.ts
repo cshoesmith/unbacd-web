@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
         .map(c => [c.checkinId, c.volumeMlOverride!]),
     );
 
-    // Preserve phantom beers (manually added, not from Untappd)
-    const phantoms = (existingCache?.checkins ?? []).filter(c => c.phantom);
+    // Preserve phantom beers that are still within the 24h window
+    const phantoms = (existingCache?.checkins ?? []).filter(c => c.phantom && c.createdAtMs >= cutoffMs);
 
     const freshCheckins = raw
       .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)

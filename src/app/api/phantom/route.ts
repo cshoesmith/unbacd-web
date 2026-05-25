@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
   // Generate a unique negative ID to distinguish phantoms from Untappd checkins
   const phantomId = -(Date.now());
 
+  // Purge any phantoms that have aged out of the 24h window
+  const cutoffMs = Date.now() - 24 * 60 * 60_000;
   const phantom: CachedCheckin = {
     checkinId:        phantomId,
     beerName,
@@ -63,7 +65,10 @@ export async function POST(req: NextRequest) {
     phantom:          true,
   };
 
-  const updatedCheckins = [...(cache?.checkins ?? []), phantom];
+  const updatedCheckins = [
+    ...(cache?.checkins ?? []).filter(c => !c.phantom || c.createdAtMs >= cutoffMs),
+    phantom,
+  ];
 
   const result = calculateBac(
     updatedCheckins.map(c => ({

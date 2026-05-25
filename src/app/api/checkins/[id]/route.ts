@@ -43,11 +43,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'no cached data — sync first' }, { status: 404 });
   }
 
-  const updatedCheckins = cache.checkins.map(c =>
-    c.checkinId === checkinId
-      ? { ...c, volumeMlOverride: volumeMl === null ? undefined : volumeMl }
-      : c,
-  );
+  const cutoffMs = Date.now() - 24 * 60 * 60_000;
+  const updatedCheckins = cache.checkins
+    .filter(c => !c.phantom || c.createdAtMs >= cutoffMs)
+    .map(c =>
+      c.checkinId === checkinId
+        ? { ...c, volumeMlOverride: volumeMl === null ? undefined : volumeMl }
+        : c,
+    );
 
   const result = calculateBac(
     updatedCheckins.map(c => ({

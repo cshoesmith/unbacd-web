@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
         .map(c => [c.checkinId, c.volumeMlOverride!]),
     );
 
-    // Preserve phantom beers through Untappd re-fetches
-    const phantoms = (cached?.checkins ?? []).filter(c => c.phantom);
+    // Preserve phantom beers that are still within the 24h window
+    const phantoms = (cached?.checkins ?? []).filter(c => c.phantom && c.createdAtMs >= cutoffMs);
 
     const freshCheckins = raw
       .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
