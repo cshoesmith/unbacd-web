@@ -547,7 +547,7 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        dndLp.bottomMargin = dp(22);
+        dndLp.bottomMargin = dp(32);
         root.addView(doNotDriveText, dndLp);
 
         // DO NOT WALK overlay (shown when BAC ≥ 0.20, replaces DO NOT DRIVE)
@@ -561,7 +561,7 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        dnwLp.bottomMargin = dp(22);
+        dnwLp.bottomMargin = dp(32);
         root.addView(doNotWalkText, dnwLp);
 
         // Pairing overlay — shown when no device token stored
