@@ -344,27 +344,27 @@ function DrinkList({
                     <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
                     <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
                   </div>
-                  <div className="flex items-start gap-2 flex-shrink-0">
-                    <div className="flex flex-col items-end gap-0.5">
+                  <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                    <div className="flex items-center gap-2">
                       <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                      <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                      <button
+                        onClick={() => {
+                          setDraft({
+                            beerName: c.beerName,
+                            abv: c.abv.toString(),
+                            volumeMl: String(resolveServingMl(c.servingType, c.volumeMlOverride, defaultServingMl ?? undefined)),
+                            createdAtMs: toDatetimeLocal(Date.now()),
+                          });
+                          setShowForm(true);
+                        }}
+                        disabled={pending}
+                        className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity"
+                        aria-label="Re-add as phantom"
+                      >
+                        <RepeatIcon />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setDraft({
-                          beerName: c.beerName,
-                          abv: c.abv.toString(),
-                          volumeMl: String(resolveServingMl(c.servingType, c.volumeMlOverride, defaultServingMl ?? undefined)),
-                          createdAtMs: toDatetimeLocal(Date.now()),
-                        });
-                        setShowForm(true);
-                      }}
-                      disabled={pending}
-                      className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
-                      aria-label="Re-add as phantom"
-                    >
-                      <RepeatIcon />
-                    </button>
+                    <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
                   </div>
                 </div>
                 {/* Serving size selector */}
