@@ -143,6 +143,16 @@ function BacWarning({ bac }: { bac: number | null }) {
 
 const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs: '' };
 
+function RepeatIcon() {
+  return (
+    <svg viewBox="0 0 24 16" width="22" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="22" height="14" rx="7" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M9 8 Q9 5 12 5 Q15 5 15 8 Q15 11 12 11 L9.5 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
+      <path d="M11 9.6 L9.5 11 L11 12.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
+
 function DrinkList({
   checkins,
   pendingIds,
@@ -294,6 +304,22 @@ function DrinkList({
                         <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
                       </div>
                       <button
+                        onClick={() => {
+                          setDraft({
+                            beerName: c.beerName,
+                            abv: c.abv.toString(),
+                            volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
+                            createdAtMs: toDatetimeLocal(Date.now()),
+                          });
+                          setShowForm(true);
+                        }}
+                        disabled={pending}
+                        className="text-[#4b5563] hover:text-[#ffd166] disabled:opacity-40 transition-colors mt-0.5"
+                        aria-label="Re-add as phantom"
+                      >
+                        <RepeatIcon />
+                      </button>
+                      <button
                         onClick={() => onPhantomRemove(c.checkinId!)}
                         disabled={pending}
                         className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-xl leading-none mt-0.5"
@@ -312,15 +338,33 @@ function DrinkList({
                 key={c.checkinId ?? i}
                 className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
               >
-                {/* Top row: beer info + ABV + time */}
+                {/* Top row: beer info + ABV + time + repeat */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
                     <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
                   </div>
-                  <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
-                    <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                    <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                  <div className="flex items-start gap-2 flex-shrink-0">
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                      <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setDraft({
+                          beerName: c.beerName,
+                          abv: c.abv.toString(),
+                          volumeMl: String(resolveServingMl(c.servingType, c.volumeMlOverride, defaultServingMl ?? undefined)),
+                          createdAtMs: toDatetimeLocal(Date.now()),
+                        });
+                        setShowForm(true);
+                      }}
+                      disabled={pending}
+                      className="text-[#4b5563] hover:text-[#ffd166] disabled:opacity-40 transition-colors mt-0.5"
+                      aria-label="Re-add as phantom"
+                    >
+                      <RepeatIcon />
+                    </button>
                   </div>
                 </div>
                 {/* Serving size selector */}
