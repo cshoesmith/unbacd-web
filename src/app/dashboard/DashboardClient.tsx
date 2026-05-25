@@ -146,9 +146,9 @@ const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs
 function RepeatIcon() {
   return (
     <svg viewBox="0 0 24 16" width="22" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="22" height="14" rx="7" stroke="currentColor" strokeWidth="1.8"/>
-      <path d="M9 8 Q9 5 12 5 Q15 5 15 8 Q15 11 12 11 L9.5 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
-      <path d="M11 9.6 L9.5 11 L11 12.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      <rect x="1" y="1" width="22" height="14" rx="7" stroke="#ffd166" strokeWidth="1.8"/>
+      <path d="M9 8 Q9 5 12 5 Q15 5 15 8 Q15 11 12 11 L9.5 11" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
+      <path d="M11 9.6 L9.5 11 L11 12.4" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
     </svg>
   );
 }
@@ -314,7 +314,7 @@ function DrinkList({
                           setShowForm(true);
                         }}
                         disabled={pending}
-                        className="text-[#4b5563] hover:text-[#ffd166] disabled:opacity-40 transition-colors mt-0.5"
+                        className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
                         aria-label="Re-add as phantom"
                       >
                         <RepeatIcon />
@@ -360,7 +360,7 @@ function DrinkList({
                         setShowForm(true);
                       }}
                       disabled={pending}
-                      className="text-[#4b5563] hover:text-[#ffd166] disabled:opacity-40 transition-colors mt-0.5"
+                      className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
                       aria-label="Re-add as phantom"
                     >
                       <RepeatIcon />
