@@ -12,6 +12,8 @@ export interface UserRecord {
   username: string;
   weightKg: number;
   gender: 'male' | 'female';
+  /** User-level default serving size in ml; overrides beer-style lookup */
+  defaultServingMl?: number;
 }
 
 export interface BacCache {

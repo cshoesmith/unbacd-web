@@ -23,6 +23,7 @@ export default async function DashboardPage() {
       username={session.username ?? user?.username ?? ''}
       weightKg={user?.weightKg ?? 80}
       gender={user?.gender ?? 'male'}
+      defaultServingMl={user?.defaultServingMl ?? null}
       initialBac={bacCache?.bac ?? null}
       initialSoberMs={bacCache?.soberMs ?? null}
       initialDrinkCount={bacCache?.drinkCount ?? null}

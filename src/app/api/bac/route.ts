@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       })),
       user.weightKg,
       user.gender,
+      user.defaultServingMl,
     );
     return NextResponse.json({
       bac:          result.bac,
@@ -95,6 +96,7 @@ export async function GET(req: NextRequest) {
       })),
       user.weightKg,
       user.gender,
+      user.defaultServingMl,
     );
 
     const cacheEntry = { ...result, checkins: allCheckins };
@@ -120,6 +122,7 @@ export async function GET(req: NextRequest) {
         })),
         user.weightKg,
         user.gender,
+        user.defaultServingMl,
       );
       return NextResponse.json({
         bac:          result.bac,

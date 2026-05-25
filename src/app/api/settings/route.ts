@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
   }
 
-  const body = await req.json() as { weightKg?: unknown; gender?: unknown };
+  const body = await req.json() as { weightKg?: unknown; gender?: unknown; defaultServingMl?: unknown };
 
   const weightKg = Number(body.weightKg);
   if (!isFinite(weightKg) || weightKg < 30 || weightKg > 300) {
@@ -28,13 +28,20 @@ export async function POST(req: NextRequest) {
   }
   const gender = body.gender;
 
+  // null clears the default (fall back to beer-style lookup); a number sets it
+  const defaultServingMl =
+    body.defaultServingMl == null ? undefined
+    : typeof body.defaultServingMl === 'number' && body.defaultServingMl > 0 && body.defaultServingMl <= 5000
+      ? body.defaultServingMl
+      : undefined;
+
   const user = await getUser(session.userId);
   if (!user) {
     return NextResponse.json({ error: 'user not found' }, { status: 404 });
   }
 
   // Save updated profile
-  await setUser(session.userId, { ...user, weightKg, gender });
+  await setUser(session.userId, { ...user, weightKg, gender, defaultServingMl });
 
   // Recalculate BAC from cached checkins with new body parameters
   const cache = await getBacCache(session.userId);
@@ -50,6 +57,7 @@ export async function POST(req: NextRequest) {
       })),
       weightKg,
       gender,
+      defaultServingMl,
     );
     await setBacCache(session.userId, { ...result, checkins: activeCheckins });
     return NextResponse.json({ ...result, checkins: activeCheckins });

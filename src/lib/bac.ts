@@ -37,10 +37,26 @@ function servingMl(servingType: string, override?: number): number {
   return SERVING_ML[servingType.toLowerCase()] ?? DEFAULT_SERVING_ML;
 }
 
+/**
+ * Resolves the effective serving volume for a checkin, exported so the
+ * frontend can show the real ml instead of "Auto" in the size dropdown.
+ * Priority: per-checkin override → user default → beer-style lookup.
+ */
+export function resolveServingMl(
+  servingType: string,
+  volumeMlOverride?: number,
+  userDefaultMl?: number,
+): number {
+  if (volumeMlOverride && volumeMlOverride > 0) return volumeMlOverride;
+  if (userDefaultMl   && userDefaultMl   > 0) return userDefaultMl;
+  return SERVING_ML[servingType.toLowerCase()] ?? DEFAULT_SERVING_ML;
+}
+
 export function calculateBac(
   checkins: Checkin[],
   weightKg: number,
   gender: 'male' | 'female',
+  userDefaultMl?: number,
   nowMs: number = Date.now(),
 ): BacResult {
   const R = gender === 'female' ? 0.55 : 0.68;
@@ -49,7 +65,7 @@ export function calculateBac(
 
   let bac = 0;
   for (const c of recent) {
-    const ml = servingMl(c.servingType, c.volumeMlOverride);
+    const ml = resolveServingMl(c.servingType, c.volumeMlOverride, userDefaultMl);
     const alcoholGrams = ml * (c.abv / 100) * 0.789;
     const hoursElapsed = (nowMs - c.createdAtMs) / 3_600_000;
     const contribution =

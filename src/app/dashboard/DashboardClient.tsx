@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { bacLabel, bacColor, formatDuration } from '@/lib/bac';
+import { bacLabel, bacColor, formatDuration, resolveServingMl } from '@/lib/bac';
 import type { CachedCheckin } from '@/lib/kv';
 
 interface Props {
   username: string;
   weightKg: number;
   gender: 'male' | 'female';
+  defaultServingMl: number | null;
   initialBac: number | null;
   initialSoberMs: number | null;
   initialDrinkCount: number | null;
@@ -148,6 +149,7 @@ function DrinkList({
   onServingChange,
   onPhantomAdd,
   onPhantomRemove,
+  defaultServingMl,
   now,
 }: {
   checkins: CachedCheckin[];
@@ -155,6 +157,7 @@ function DrinkList({
   onServingChange: (checkinId: number, volumeMl: number | null) => Promise<void>;
   onPhantomAdd: (data: { beerName: string; abv: number; volumeMl: number; createdAtMs: number }) => Promise<void>;
   onPhantomRemove: (checkinId: number) => Promise<void>;
+  defaultServingMl: number | null;
   now: number;
 }) {
   const [showForm, setShowForm]   = useState(false);
@@ -337,7 +340,9 @@ function DrinkList({
                       value={opt.ml ?? ''}
                       style={{ backgroundColor: '#1a1816' }}
                     >
-                      {opt.label}
+                      {opt.ml === null
+                        ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
+                        : opt.label}
                     </option>
                   ))}
                 </select>
@@ -381,6 +386,7 @@ export default function DashboardClient({
   username,
   weightKg: initialWeight,
   gender: initialGender,
+  defaultServingMl: initialDefaultServingMl,
   initialBac,
   initialSoberMs,
   initialDrinkCount,
@@ -396,11 +402,16 @@ export default function DashboardClient({
   const [pendingCheckinIds, setPendingCheckinIds] = useState<Set<number>>(new Set());
   const [now, setNow] = useState(Date.now());
 
-  const [weightKg,   setWeightKg]   = useState(initialWeight);
-  const [gender,     setGender]     = useState<'male' | 'female'>(initialGender);
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsDraft, setSettingsDraft] = useState({ weightKg: initialWeight, gender: initialGender as 'male' | 'female' });
+  const [weightKg,        setWeightKg]        = useState(initialWeight);
+  const [gender,          setGender]          = useState<'male' | 'female'>(initialGender);
+  const [defaultServingMl, setDefaultServingMl] = useState<number | null>(initialDefaultServingMl);
+  const [showSettings,    setShowSettings]    = useState(false);
+  const [settingsSaving,  setSettingsSaving]  = useState(false);
+  const [settingsDraft,   setSettingsDraft]   = useState({
+    weightKg:        initialWeight,
+    gender:          initialGender as 'male' | 'female',
+    defaultServingMl: initialDefaultServingMl as number | null,
+  });
 
   const [syncing,      setSyncing]      = useState(false);
   const [syncError,    setSyncError]    = useState<string | null>(null);
@@ -501,12 +512,17 @@ export default function DashboardClient({
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsDraft),
+        body: JSON.stringify({
+          weightKg:        settingsDraft.weightKg,
+          gender:          settingsDraft.gender,
+          defaultServingMl: settingsDraft.defaultServingMl,
+        }),
       });
       if (!res.ok) return;
       const data: SettingsResult = await res.json();
       setWeightKg(settingsDraft.weightKg);
       setGender(settingsDraft.gender);
+      setDefaultServingMl(settingsDraft.defaultServingMl);
       if (data.bac !== undefined)         setBac(data.bac);
       if (data.soberMs !== undefined)     setSoberMs(data.soberMs);
       if (data.drinkCount !== undefined)  setDrinkCount(data.drinkCount);
@@ -596,7 +612,7 @@ export default function DashboardClient({
         </button>
 
         <button
-          onClick={() => { setSettingsDraft({ weightKg, gender }); setShowSettings(s => !s); }}
+          onClick={() => { setSettingsDraft({ weightKg, gender, defaultServingMl }); setShowSettings(s => !s); }}
           className="bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-3 py-2.5 rounded-xl transition-colors"
           aria-label="Settings"
         >
@@ -648,6 +664,24 @@ export default function DashboardClient({
             </div>
           </div>
 
+          {/* Default serving size */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#6b7280] text-xs">Default serving size</label>
+            <select
+              value={settingsDraft.defaultServingMl ?? ''}
+              onChange={e => setSettingsDraft(d => ({ ...d, defaultServingMl: e.target.value === '' ? null : Number(e.target.value) }))}
+              className="w-full text-sm bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
+              style={{ colorScheme: 'dark' }}
+            >
+              <option value="" style={{ backgroundColor: '#1a1816' }}>Beer style (auto)</option>
+              {SERVING_OPTIONS.filter(o => o.ml !== null).map(opt => (
+                <option key={opt.ml} value={opt.ml!} style={{ backgroundColor: '#1a1816' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-2 pt-1">
             <button
               onClick={saveSettings}
@@ -678,6 +712,7 @@ export default function DashboardClient({
         onServingChange={setServing}
         onPhantomAdd={addPhantom}
         onPhantomRemove={removePhantom}
+        defaultServingMl={defaultServingMl}
         now={now}
       />
 

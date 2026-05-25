@@ -61,6 +61,7 @@ export async function PATCH(
     })),
     user.weightKg,
     user.gender,
+    user.defaultServingMl,
   );
 
   await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
@@ -112,6 +113,7 @@ export async function DELETE(
     })),
     user.weightKg,
     user.gender,
+    user.defaultServingMl,
   );
 
   await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
