@@ -32,9 +32,12 @@ export async function POST(req: NextRequest) {
     // Re-apply any per-checkin serving overrides the user set
     const overrideMap = new Map<number, number>(
       (existingCache?.checkins ?? [])
-        .filter(c => c.volumeMlOverride != null)
+        .filter(c => c.volumeMlOverride != null && !c.phantom)
         .map(c => [c.checkinId, c.volumeMlOverride!]),
     );
+
+    // Preserve phantom beers (manually added, not from Untappd)
+    const phantoms = (existingCache?.checkins ?? []).filter(c => c.phantom);
 
     const freshCheckins = raw
       .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
@@ -49,8 +52,10 @@ export async function POST(req: NextRequest) {
         volumeMlOverride: overrideMap.get(c.checkinId),
       }));
 
+    const allCheckins = [...freshCheckins, ...phantoms];
+
     const result = calculateBac(
-      freshCheckins.map(c => ({
+      allCheckins.map(c => ({
         createdAtMs:      c.createdAtMs,
         abv:              c.abv,
         servingType:      c.servingType,
@@ -60,9 +65,9 @@ export async function POST(req: NextRequest) {
       user.gender,
     );
 
-    await setBacCache(session.userId, { ...result, checkins: freshCheckins });
+    await setBacCache(session.userId, { ...result, checkins: allCheckins });
 
-    return NextResponse.json({ ...result, checkins: freshCheckins });
+    return NextResponse.json({ ...result, checkins: allCheckins });
   } catch (err) {
     if (err instanceof RateLimitError) {
       return NextResponse.json({ error: 'rate limited by Untappd' }, { status: 429 });

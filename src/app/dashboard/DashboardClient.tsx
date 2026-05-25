@@ -57,14 +57,22 @@ function BacCircle({ bac }: { bac: number | null }) {
         transition: flashing ? 'none' : 'background-color 0.6s ease',
       }}
     >
-      {/* BAC number */}
+      {/* BAC number + unit labels */}
       <div className="flex flex-col items-center gap-2">
-        <span
-          className="text-5xl font-black tabular-nums"
-          style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}
-        >
-          {bac !== null ? bac.toFixed(2) : '—'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-5xl font-black tabular-nums"
+            style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}
+          >
+            {bac !== null ? bac.toFixed(2) : '—'}
+          </span>
+          {bac !== null && (
+            <div className="flex flex-col justify-center pb-0.5">
+              <span className="text-sm font-bold leading-tight" style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}>%BAC</span>
+              <span className="text-xs leading-tight text-[#9ca3af]">(est)</span>
+            </div>
+          )}
+        </div>
 
         {/* Status badge */}
         <span
@@ -113,6 +121,12 @@ function timeSince(createdAtMs: number, now: number): string {
   return 'just now';
 }
 
+function toDatetimeLocal(ms: number): string {
+  const d   = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function BacWarning({ bac }: { bac: number | null }) {
   if (bac === null || bac < 0.05) return null;
   const isDontWalk = bac >= 0.20;
@@ -126,69 +140,212 @@ function BacWarning({ bac }: { bac: number | null }) {
   );
 }
 
+const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs: '' };
+
 function DrinkList({
   checkins,
   pendingIds,
   onServingChange,
+  onPhantomAdd,
+  onPhantomRemove,
   now,
 }: {
   checkins: CachedCheckin[];
   pendingIds: Set<number>;
   onServingChange: (checkinId: number, volumeMl: number | null) => Promise<void>;
+  onPhantomAdd: (data: { beerName: string; abv: number; volumeMl: number; createdAtMs: number }) => Promise<void>;
+  onPhantomRemove: (checkinId: number) => Promise<void>;
   now: number;
 }) {
+  const [showForm, setShowForm]   = useState(false);
+  const [draft, setDraft]         = useState(PHANTOM_DEFAULT);
+  const [submitting, setSubmitting] = useState(false);
+
   const cutoff = now - 24 * 60 * 60_000;
   const recent = checkins.filter(c => c.createdAtMs >= cutoff);
-  if (recent.length === 0) return null;
+
+  const openForm = () => {
+    setDraft({ ...PHANTOM_DEFAULT, createdAtMs: toDatetimeLocal(Date.now()) });
+    setShowForm(true);
+  };
+
+  const submit = async () => {
+    if (!draft.beerName.trim()) return;
+    const abv         = parseFloat(draft.abv);
+    const volumeMl    = parseInt(draft.volumeMl, 10);
+    const createdAtMs = new Date(draft.createdAtMs).getTime();
+    if (isNaN(abv) || isNaN(volumeMl) || isNaN(createdAtMs)) return;
+    setSubmitting(true);
+    try {
+      await onPhantomAdd({ beerName: draft.beerName.trim(), abv, volumeMl, createdAtMs });
+      setShowForm(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-sm mt-2">
-      <h2 className="text-[#6b7280] text-xs uppercase tracking-widest mb-2 px-1">
-        Recent drinks · 24h window
-      </h2>
-      <div className="flex flex-col gap-2">
-        {recent.map((c, i) => {
-          const pending = pendingIds.has(c.checkinId ?? -1);
-          return (
-            <div
-              key={c.checkinId ?? i}
-              className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
-            >
-              {/* Top row: beer info + ABV + time */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-                  <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
-                </div>
-                <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
-                  <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                  <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
-                </div>
-              </div>
-              {/* Serving size selector */}
-              <select
-                disabled={pending}
-                value={c.volumeMlOverride ?? ''}
-                onChange={e => {
-                  const val = e.target.value === '' ? null : Number(e.target.value);
-                  onServingChange(c.checkinId!, val);
-                }}
-                className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
-                style={{ colorScheme: 'dark' }}
-              >
-                {SERVING_OPTIONS.map(opt => (
-                  <option
-                    key={opt.ml ?? 'auto'}
-                    value={opt.ml ?? ''}
-                    style={{ backgroundColor: '#1a1816' }}
-                  >
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
+      {/* Header row with + button */}
+      <div className="flex items-center justify-between px-1 mb-2">
+        <h2 className="text-[#6b7280] text-xs uppercase tracking-widest">
+          Recent drinks · 24h window
+        </h2>
+        <button
+          onClick={openForm}
+          className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-lg leading-none transition-colors"
+          aria-label="Add phantom beer"
+        >
+          +
+        </button>
       </div>
+
+      {/* Phantom add form */}
+      {showForm && (
+        <div className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/20 rounded-xl px-4 py-3 gap-3 mb-2">
+          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add phantom beer</p>
+
+          <input
+            type="text"
+            placeholder="Beer name"
+            value={draft.beerName}
+            onChange={e => setDraft(d => ({ ...d, beerName: e.target.value }))}
+            className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white placeholder-[#4b5563] focus:outline-none focus:border-[#ffd166]/40"
+          />
+
+          <div className="flex gap-2">
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-[#6b7280] text-xs">ABV %</label>
+              <input
+                type="number"
+                min="0" max="25" step="0.1"
+                value={draft.abv}
+                onChange={e => setDraft(d => ({ ...d, abv: e.target.value }))}
+                className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#ffd166]/40"
+              />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-[#6b7280] text-xs">Volume (ml)</label>
+              <input
+                type="number"
+                min="50" max="2000" step="5"
+                value={draft.volumeMl}
+                onChange={e => setDraft(d => ({ ...d, volumeMl: e.target.value }))}
+                className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#ffd166]/40"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[#6b7280] text-xs">Date &amp; time</label>
+            <input
+              type="datetime-local"
+              value={draft.createdAtMs}
+              onChange={e => setDraft(d => ({ ...d, createdAtMs: e.target.value }))}
+              className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#ffd166]/40"
+              style={{ colorScheme: 'dark' }}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={submit}
+              disabled={submitting || !draft.beerName.trim()}
+              className="flex-1 bg-[#ffd166] hover:bg-[#ffd166]/90 disabled:opacity-50 text-[#080604] text-sm font-bold py-2 rounded-xl transition-colors"
+            >
+              {submitting ? 'Adding…' : 'Add Beer'}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="px-4 bg-white/5 hover:bg-white/10 text-[#9ca3af] text-sm rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Drink list */}
+      {recent.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {recent.map((c, i) => {
+            const pending = pendingIds.has(c.checkinId ?? -1);
+
+            if (c.phantom) {
+              return (
+                <div
+                  key={c.checkinId ?? i}
+                  className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">phantom</span>
+                      </div>
+                      <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
+                    </div>
+                    <div className="flex items-start gap-2 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                        <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                      </div>
+                      <button
+                        onClick={() => onPhantomRemove(c.checkinId!)}
+                        disabled={pending}
+                        className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-xl leading-none mt-0.5"
+                        aria-label="Remove phantom beer"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={c.checkinId ?? i}
+                className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
+              >
+                {/* Top row: beer info + ABV + time */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                    <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
+                  </div>
+                  <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                    <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                    <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                  </div>
+                </div>
+                {/* Serving size selector */}
+                <select
+                  disabled={pending}
+                  value={c.volumeMlOverride ?? ''}
+                  onChange={e => {
+                    const val = e.target.value === '' ? null : Number(e.target.value);
+                    onServingChange(c.checkinId!, val);
+                  }}
+                  className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
+                  style={{ colorScheme: 'dark' }}
+                >
+                  {SERVING_OPTIONS.map(opt => (
+                    <option
+                      key={opt.ml ?? 'auto'}
+                      value={opt.ml ?? ''}
+                      style={{ backgroundColor: '#1a1816' }}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -300,6 +457,39 @@ export default function DashboardClient({
       setDrinkCount(data.drinkCount);
       setCalculatedAt(data.calculatedAt);
       setCheckins(data.checkins);
+    } finally {
+      setPendingCheckinIds(s => { const n = new Set(s); n.delete(checkinId); return n; });
+    }
+  }, []);
+
+  const addPhantom = useCallback(async (data: {
+    beerName: string; abv: number; volumeMl: number; createdAtMs: number;
+  }) => {
+    const res = await fetch('/api/phantom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return;
+    const result = await res.json();
+    setBac(result.bac);
+    setSoberMs(result.soberMs);
+    setDrinkCount(result.drinkCount);
+    setCalculatedAt(result.calculatedAt);
+    setCheckins(result.checkins);
+  }, []);
+
+  const removePhantom = useCallback(async (checkinId: number) => {
+    setPendingCheckinIds(s => { const n = new Set(s); n.add(checkinId); return n; });
+    try {
+      const res = await fetch(`/api/checkins/${checkinId}`, { method: 'DELETE' });
+      if (!res.ok) return;
+      const result = await res.json();
+      setBac(result.bac);
+      setSoberMs(result.soberMs);
+      setDrinkCount(result.drinkCount);
+      setCalculatedAt(result.calculatedAt);
+      setCheckins(result.checkins);
     } finally {
       setPendingCheckinIds(s => { const n = new Set(s); n.delete(checkinId); return n; });
     }
@@ -486,6 +676,8 @@ export default function DashboardClient({
         checkins={checkins}
         pendingIds={pendingCheckinIds}
         onServingChange={setServing}
+        onPhantomAdd={addPhantom}
+        onPhantomRemove={removePhantom}
         now={now}
       />
 

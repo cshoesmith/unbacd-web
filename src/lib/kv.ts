@@ -31,6 +31,8 @@ export interface CachedCheckin {
   servingType: string;
   createdAtMs: number;
   volumeMlOverride?: number;
+  /** true for manually-added "phantom" beers (not from Untappd) */
+  phantom?: true;
 }
 
 export interface DeviceRecord {

@@ -64,9 +64,12 @@ export async function GET(req: NextRequest) {
     // Re-apply any per-checkin serving overrides the user set via the web app
     const overrideMap = new Map<number, number>(
       (cached?.checkins ?? [])
-        .filter(c => c.volumeMlOverride != null)
+        .filter(c => c.volumeMlOverride != null && !c.phantom)
         .map(c => [c.checkinId, c.volumeMlOverride!]),
     );
+
+    // Preserve phantom beers through Untappd re-fetches
+    const phantoms = (cached?.checkins ?? []).filter(c => c.phantom);
 
     const freshCheckins = raw
       .filter(c => parseUntappdDate(c.createdAt) >= cutoffMs)
@@ -81,8 +84,10 @@ export async function GET(req: NextRequest) {
         volumeMlOverride: overrideMap.get(c.checkinId),
       }));
 
+    const allCheckins = [...freshCheckins, ...phantoms];
+
     const result = calculateBac(
-      freshCheckins.map(c => ({
+      allCheckins.map(c => ({
         createdAtMs:      c.createdAtMs,
         abv:              c.abv,
         servingType:      c.servingType,
@@ -92,7 +97,7 @@ export async function GET(req: NextRequest) {
       user.gender,
     );
 
-    const cacheEntry = { ...result, checkins: freshCheckins };
+    const cacheEntry = { ...result, checkins: allCheckins };
     await setBacCache(device.userId, cacheEntry);
 
     return NextResponse.json({
