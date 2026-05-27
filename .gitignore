@@ -48,3 +48,10 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Xcode / Apple Watch
+apple-watch/build/
+apple-watch/DerivedData/
+*.xcuserdatad/
+*.xcuserdata/
+*.xcscmblueprint

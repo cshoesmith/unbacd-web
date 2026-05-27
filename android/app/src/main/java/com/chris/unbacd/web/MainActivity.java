@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
 
     private static final long   UI_TICK_MS        = 10_000L;      // 10 s  — keeps "Updated X ago" live
-    private static final long   POLL_INTERVAL_MS  = 5 * 60_000L;  // 5 min — actual API call
+    private static final long   POLL_INTERVAL_MS  = 60_000L;      // 1 min — web API poll (server still rate-limits Untappd sync)
     private static final long   STALE_AFTER_MS    = 15 * 60_000L;
     private static final String PREFS_NAME        = "unbacd-web";
     private static final String PREF_DEVICE_TOKEN = "device-token";
