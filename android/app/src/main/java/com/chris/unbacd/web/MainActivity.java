@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -535,15 +536,58 @@ public class MainActivity extends Activity {
             }
         }
 
-        final int[] selected = new int[] { preselect };
+        ArrayAdapter<String> pickerAdapter = new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_list_item_1,
+                optionLabels
+        ) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+                tv.setTextColor(0xfff3f4f6);
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+                tv.setPadding(dp(12), dp(9), dp(12), dp(9));
+                boolean isCurrent = item.volumeMlOverride == null
+                        ? position == 0
+                        : item.volumeMlOverride.equals(optionValues[position]);
+                if (isCurrent) {
+                    tv.setText(optionLabels[position] + "  ✓");
+                    tv.setBackgroundColor(0x220d9488);
+                } else {
+                    tv.setText(optionLabels[position]);
+                    tv.setBackgroundColor(0x00000000);
+                }
+                return tv;
+            }
+        };
 
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("Set serving size")
-                .setMessage(item.beerName + "\nChoose one option")
-                .setSingleChoiceItems(optionLabels, preselect, (d, which) -> selected[0] = which)
-                .setPositiveButton("Save", (d, w) -> patchServing(item.checkinId, optionValues[selected[0]]))
+        TextView dialogTitle = tv("Set serving · " + item.beerName, 13, COLOR_ACCENT, Typeface.BOLD);
+        dialogTitle.setPadding(dp(18), dp(14), dp(18), dp(8));
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+            .setCustomTitle(dialogTitle)
+                .setAdapter(pickerAdapter, (d, which) -> patchServing(item.checkinId, optionValues[which]))
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(roundRect(0xff1a1816, 16));
+        }
+        ListView list = dialog.getListView();
+        if (list != null) {
+            list.setBackgroundColor(0xff1a1816);
+            list.setDivider(new ColorDrawable(0x22ffffff));
+            list.setDividerHeight(dp(1));
+            list.setCacheColorHint(Color.TRANSPARENT);
+        }
+        if (dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE) != null) {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(COLOR_ACCENT);
+        }
+        if (dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE) != null) {
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(0xffe5e7eb);
+        }
     }
 
     private void deleteSelectedBeer() {
@@ -558,6 +602,169 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Delete", (d, w) -> deleteBeer(item.checkinId))
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void addManualBeerDialog() {
+        if (deviceToken == null) {
+            Toast.makeText(this, "Pair watch first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(14), dp(10), dp(14), dp(4));
+
+        TextView nameLabel = tv("Beer name", 11, 0xff9ca3af, Typeface.BOLD);
+        form.addView(nameLabel);
+
+        EditText nameInput = new EditText(this);
+        nameInput.setHint("e.g. Test beer");
+        nameInput.setHintTextColor(0xff6b7280);
+        nameInput.setTextColor(0xfff3f4f6);
+        nameInput.setSingleLine(true);
+        nameInput.setBackground(roundRect(0xff252220, 10));
+        nameInput.setPadding(dp(10), dp(8), dp(10), dp(8));
+        LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        nameLp.bottomMargin = dp(10);
+        form.addView(nameInput, nameLp);
+
+        TextView abvLabel = tv("ABV %", 11, 0xff9ca3af, Typeface.BOLD);
+        form.addView(abvLabel);
+
+        EditText abvInput = new EditText(this);
+        abvInput.setText("5.0");
+        abvInput.setHint("5.0");
+        abvInput.setHintTextColor(0xff6b7280);
+        abvInput.setTextColor(0xfff3f4f6);
+        abvInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        abvInput.setBackground(roundRect(0xff252220, 10));
+        abvInput.setPadding(dp(10), dp(8), dp(10), dp(8));
+        LinearLayout.LayoutParams abvLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        abvLp.bottomMargin = dp(10);
+        form.addView(abvInput, abvLp);
+
+        TextView volLabel = tv("Volume (ml)", 11, 0xff9ca3af, Typeface.BOLD);
+        form.addView(volLabel);
+
+        final Integer[] volumeValues = new Integer[] { 150, 285, 330, 375, 450, 500, 570 };
+        final String[] volumeLabels = new String[] {
+                "150 ml", "285 ml (Middie)", "330 ml (Euro)", "375 ml (Can)",
+                "450 ml (Schooner)", "500 ml", "570 ml (Pint)"
+        };
+        final int[] selectedVolume = new int[] { 3 }; // default 375 ml
+
+        ArrayAdapter<String> volumeAdapter = new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_list_item_1,
+                volumeLabels
+        ) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+                tv.setTextColor(0xfff3f4f6);
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+                tv.setPadding(dp(10), dp(7), dp(10), dp(7));
+                tv.setBackgroundColor(position == selectedVolume[0] ? 0x220d9488 : 0x00000000);
+                return tv;
+            }
+        };
+
+        ListView volumeList = new ListView(this);
+        volumeList.setDivider(new ColorDrawable(0x22ffffff));
+        volumeList.setDividerHeight(dp(1));
+        volumeList.setBackgroundColor(0xff1a1816);
+        volumeList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        volumeList.setAdapter(volumeAdapter);
+        volumeList.setItemChecked(selectedVolume[0], true);
+        volumeList.setOnItemClickListener((p, v, pos, id) -> {
+            selectedVolume[0] = pos;
+            volumeAdapter.notifyDataSetChanged();
+        });
+
+        LinearLayout.LayoutParams volumeLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(130)
+        );
+        form.addView(volumeList, volumeLp);
+
+        TextView dialogTitle = tv("Add manual beer", 13, COLOR_ACCENT, Typeface.BOLD);
+        dialogTitle.setPadding(dp(18), dp(14), dp(18), dp(8));
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setCustomTitle(dialogTitle)
+                .setView(form)
+                .setPositiveButton("Add", (d, w) -> {
+                    String beerName = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+                    if (beerName.isEmpty()) {
+                        Toast.makeText(this, "Beer name required", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    double abv;
+                    try {
+                        abv = Double.parseDouble(String.valueOf(abvInput.getText()).trim());
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Invalid ABV", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    int volumeMl = volumeValues[selectedVolume[0]];
+                    addManualBeer(beerName, abv, volumeMl);
+                })
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(roundRect(0xff1a1816, 16));
+        }
+        if (dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE) != null) {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(COLOR_ACCENT);
+        }
+        if (dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE) != null) {
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(0xffe5e7eb);
+        }
+    }
+
+    private void addManualBeer(String beerName, double abv, int volumeMl) {
+        if (deviceToken == null) return;
+        executor.execute(() -> {
+            try {
+                URL url = new URL(WEB_API_BASE + "/api/phantom?device=" + deviceToken);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(10_000);
+
+                JSONObject body = new JSONObject();
+                body.put("beerName", beerName);
+                body.put("abv", abv);
+                body.put("volumeMl", volumeMl);
+                body.put("createdAtMs", System.currentTimeMillis());
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.toString().getBytes("UTF-8"));
+                }
+
+                int code = conn.getResponseCode();
+                handler.post(() -> {
+                    if (code >= 200 && code < 300) {
+                        Toast.makeText(this, "Manual beer added", Toast.LENGTH_SHORT).show();
+                        pollWebApi();
+                    } else {
+                        Toast.makeText(this, "Add failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                handler.post(() -> Toast.makeText(this, "Add error", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     private void patchServing(int checkinId, Integer volumeMl) {
@@ -874,6 +1081,21 @@ public class MainActivity extends Activity {
         actionRow.setGravity(Gravity.CENTER);
         actionRow.setPadding(0, dp(8), 0, 0);
         actionRow.setWeightSum(3f);
+
+        Button addManualBtn = new Button(this);
+        addManualBtn.setText("+ Add manual");
+        addManualBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f);
+        addManualBtn.setMinHeight(0);
+        addManualBtn.setMinimumHeight(0);
+        addManualBtn.setPadding(dp(10), dp(4), dp(10), dp(4));
+        addManualBtn.setOnClickListener(v -> addManualBeerDialog());
+        LinearLayout.LayoutParams addBtnLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        addBtnLp.gravity = Gravity.CENTER_HORIZONTAL;
+        addBtnLp.topMargin = dp(8);
+        beerModalCard.addView(addManualBtn, addBtnLp);
 
         LinearLayout.LayoutParams actionBtnLp = new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);

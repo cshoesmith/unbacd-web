@@ -2,9 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies }                   from 'next/headers';
 import { getIronSession }            from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/session';
-import { getBacCache, setBacCache, getUser } from '@/lib/kv';
+import { getBacCache, setBacCache, getUser, getDevice } from '@/lib/kv';
 import { calculateBac }              from '@/lib/bac';
 import type { CachedCheckin }        from '@/lib/kv';
+
+async function resolveUserId(req: NextRequest): Promise<string | null> {
+  const cookieStore = await cookies();
+  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  if (session.userId) return session.userId;
+
+  const deviceToken = req.nextUrl.searchParams.get('device');
+  if (!deviceToken) return null;
+  const device = await getDevice(deviceToken);
+  return device?.userId ?? null;
+}
 
 /**
  * POST /api/phantom
@@ -14,9 +25,8 @@ import type { CachedCheckin }        from '@/lib/kv';
  * Phantom beers survive Untappd syncs and are stored alongside real checkins.
  */
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-  if (!session.userId) {
+  const userId = await resolveUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
   }
 
@@ -42,8 +52,8 @@ export async function POST(req: NextRequest) {
   }
 
   const [cache, user] = await Promise.all([
-    getBacCache(session.userId),
-    getUser(session.userId),
+    getBacCache(userId),
+    getUser(userId),
   ]);
 
   if (!user) {
@@ -85,7 +95,7 @@ export async function POST(req: NextRequest) {
     user.defaultServingMl,
   );
 
-  await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
+  await setBacCache(userId, { ...result, checkins: updatedCheckins });
 
   return NextResponse.json({ ...result, checkins: updatedCheckins });
 }
