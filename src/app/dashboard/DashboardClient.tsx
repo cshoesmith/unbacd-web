@@ -738,7 +738,7 @@ export default function DashboardClient({
 
   return (
     <main
-      className="flex flex-col items-center px-4 py-3 gap-2 overflow-hidden"
+      className="flex flex-col items-center px-4 py-2 gap-2 overflow-hidden"
       style={{
         height: '100dvh',
         backgroundColor: '#080604',
