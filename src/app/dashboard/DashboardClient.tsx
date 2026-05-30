@@ -129,14 +129,18 @@ function getSoberText(bac: number | null, soberMs: number | null): string | null
 }
 
 const SERVING_OPTIONS: { label: string; ml: number | null }[] = [
-  { label: 'Auto',                ml: null },
-  { label: '150 ml',             ml: 150  },
-  { label: '285 ml · middie',    ml: 285  },
-  { label: '330 ml · euro',      ml: 330  },
-  { label: '375 ml · can',       ml: 375  },
-  { label: '450 ml · schooner',  ml: 450  },
-  { label: '500 ml',             ml: 500  },
-  { label: '570 ml · pint',      ml: 570  },
+  { label: 'Auto',                  ml: null },
+  { label: '115 ml · small/Tas',    ml: 115  },
+  { label: '140 ml · pony',         ml: 140  },
+  { label: '170 ml · bobby WA',     ml: 170  },
+  { label: '200 ml · butcher',      ml: 200  },
+  { label: '285 ml · pot/middy',    ml: 285  },
+  { label: '330 ml · euro/bottle',  ml: 330  },
+  { label: '375 ml · can',          ml: 375  },
+  { label: '425 ml · schooner NSW', ml: 425  },
+  { label: '500 ml',                ml: 500  },
+  { label: '570 ml · pint',         ml: 570  },
+  { label: '1140 ml · jug',         ml: 1140 },
 ];
 
 function timeSince(createdAtMs: number, now: number): string {
@@ -169,7 +173,7 @@ function BacWarning({ bac }: { bac: number | null }) {
   );
 }
 
-const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs: '' };
+const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '425', createdAtMs: '' };
 
 // Map BAC to border color gradient: green -> yellow -> red
 function bacToBorderColor(bac: number): string {
@@ -291,13 +295,18 @@ function DrinkList({
             </div>
             <div className="flex flex-col gap-1 flex-1">
               <label className="text-[#6b7280] text-xs">Volume (ml)</label>
-              <input
-                type="number"
-                min="50" max="2000" step="5"
+              <select
                 value={draft.volumeMl}
                 onChange={e => setDraft(d => ({ ...d, volumeMl: e.target.value }))}
-                className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#ffd166]/40"
-              />
+                className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
+                style={{ colorScheme: 'dark' }}
+              >
+                {SERVING_OPTIONS.filter(opt => opt.ml !== null).map(opt => (
+                  <option key={opt.ml} value={opt.ml!} style={{ backgroundColor: '#1a1816' }}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -399,7 +408,7 @@ function DrinkList({
                           onServingChange(c.checkinId!, val);
                         }}
                         className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
-                        style={{ colorScheme: 'dark', width: '140px' }}
+                        style={{ colorScheme: 'dark', width: '165px' }}
                       >
                         {SERVING_OPTIONS.map(opt => (
                           <option
@@ -476,7 +485,7 @@ function DrinkList({
                       onServingChange(c.checkinId!, val);
                     }}
                     className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
-                    style={{ colorScheme: 'dark', width: '140px' }}
+                    style={{ colorScheme: 'dark', width: '165px' }}
                   >
                     {SERVING_OPTIONS.map(opt => (
                       <option

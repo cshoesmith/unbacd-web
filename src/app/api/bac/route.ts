@@ -17,6 +17,7 @@ function toWatchCheckins(
     volumeMlOverride?: number;
     createdAtMs: number;
     phantom?: true;
+    repeat?: true;
   }>,
   user: { weightKg: number; gender: 'male' | 'female'; defaultServingMl?: number | null },
 ) {
@@ -45,6 +46,7 @@ function toWatchCheckins(
       volumeMlOverride: c.volumeMlOverride,
       createdAtMs: c.createdAtMs,
       phantom: c.phantom === true,
+      repeat: c.repeat === true,
       bacAtTime,
     };
   });

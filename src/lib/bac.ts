@@ -4,19 +4,31 @@ const ELIMINATION_RATE_PER_HOUR = 0.015; // %/hr
 const SESSION_WINDOW_MS = 24 * 60 * 60_000; // 24 hours
 
 const SERVING_ML: Record<string, number> = {
-  draft:          568, // pint
-  pint:           568,
-  bottle:         355,
-  can:            355,
-  cask:           568,
-  nitro:          568,
+  small:          115,
+  tasmania:       115,
+  pony:           140,
+  bobby:          170,
+  butcher:        200,
+  pot:            285,
+  middy:          285,
+  middie:         285,
+  draft:          570,
+  pint:           570,
+  bottle:         330,
+  stubby:         330,
+  euro:           330,
+  can:            375,
+  tinnie:         375,
+  cask:           570,
+  nitro:          570,
   'small bottle': 330,
   'medium bottle':500,
   schooner:       425,
+  jug:            1140,
   growler:        1893,
-  taster:         118,
+  taster:         115,
 };
-const DEFAULT_SERVING_ML = 400;
+const DEFAULT_SERVING_ML = 425;
 
 export interface Checkin {
   createdAtMs: number;
