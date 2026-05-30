@@ -32,7 +32,17 @@ interface SyncResult {
   checkins?: CachedCheckin[];
 }
 
-function BacCircle({ bac }: { bac: number | null }) {
+function BacCircle({
+  bac,
+  soberText,
+  drinkCount,
+  lastSyncText,
+}: {
+  bac: number | null;
+  soberText: string | null;
+  drinkCount: number | null;
+  lastSyncText: string;
+}) {
   const [flashPhase, setFlashPhase] = useState(false);
   const flashing = bac !== null && bac >= 0.20;
 
@@ -59,7 +69,7 @@ function BacCircle({ bac }: { bac: number | null }) {
       }}
     >
       {/* BAC number + unit labels */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-1">
         <div className="flex items-center gap-1.5">
           <span
             className="font-black tabular-nums"
@@ -83,21 +93,34 @@ function BacCircle({ bac }: { bac: number | null }) {
           {label}
         </span>
       </div>
+
+      {/* Compact status block inside circle to save vertical space */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center leading-tight">
+        {soberText && (
+          <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+            {soberText}
+          </p>
+        )}
+        {drinkCount !== null && (
+          <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+            {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} · 24h
+          </p>
+        )}
+        <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+          {lastSyncText}
+        </p>
+      </div>
     </div>
   );
 }
 
-function SoberLine({ bac, soberMs }: { bac: number | null; soberMs: number | null }) {
+function getSoberText(bac: number | null, soberMs: number | null): string | null {
   if (bac === null) return null;
   if (bac < 0.02) return null; // SOBER — no line needed
   if (!soberMs || soberMs <= 0) {
-    return <p className="text-[#9ca3af] text-sm text-center">Sober now</p>;
+    return 'Sober now';
   }
-  return (
-    <p className="text-[#9ca3af] text-sm text-center">
-      Sober in {formatDuration(soberMs)}
-    </p>
-  );
+  return `Sober in ${formatDuration(soberMs)}`;
 }
 
 const SERVING_OPTIONS: { label: string; ml: number | null }[] = [
@@ -222,7 +245,7 @@ function DrinkList({
   };
 
   return (
-    <div className="w-full max-w-sm mt-2">
+    <div className="w-full max-w-sm mt-1 flex flex-col flex-1 min-h-0">
       {/* Header row with + button */}
       <div className="flex items-center justify-between px-1 mb-2">
         <h2 className="text-[#9ca3af] text-xs uppercase tracking-widest">
@@ -303,9 +326,13 @@ function DrinkList({
       )}
 
       {/* Drink list */}
-      {recent.length > 0 && (
-        <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-2">
-          {recent.map((c, i) => {
+      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-2">
+        {recent.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-[#6b7280] text-xs">
+            No drinks in the last 24h.
+          </div>
+        ) : (
+          recent.map((c, i) => {
             const pending = pendingIds.has(c.checkinId ?? -1);
 
             if (c.phantom) {
@@ -447,9 +474,9 @@ function DrinkList({
                 </select>
               </div>
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
       {/* Delete confirmation modal */}
       {deleteConfirmId && (
@@ -683,10 +710,11 @@ export default function DashboardClient({
   const lastSyncText = calculatedAt
     ? `Last synced ${Math.round((Date.now() - calculatedAt) / 60_000)}m ago`
     : 'Not yet synced';
+  const soberText = getSoberText(bac, soberMs);
 
   return (
     <main
-      className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden"
+      className="flex flex-col items-center px-4 py-3 gap-3 overflow-hidden"
       style={{
         height: '100dvh',
         backgroundColor: '#080604',
@@ -708,25 +736,17 @@ export default function DashboardClient({
         </button>
       </div>
 
-      {/* BAC circle + all status messages grouped tightly */}
+      {/* BAC circle */}
       <div className="flex flex-col items-center gap-2">
-        <BacCircle bac={bac} />
-
-        {/* Sober time */}
-        <SoberLine bac={bac} soberMs={soberMs} />
+        <BacCircle
+          bac={bac}
+          soberText={soberText}
+          drinkCount={drinkCount}
+          lastSyncText={lastSyncText}
+        />
 
         {/* DO NOT DRIVE / DO NOT WALK warning */}
         <BacWarning bac={bac} />
-
-        {/* Drink count + last sync */}
-        <div className="flex flex-col items-center gap-1">
-          {drinkCount !== null && (
-            <p className="text-[#9ca3af] text-sm">
-              {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 24h window
-            </p>
-          )}
-          <p className="text-[#9ca3af] text-xs">{lastSyncText}</p>
-        </div>
 
         {/* Sync error */}
         {syncError && (
@@ -884,7 +904,7 @@ export default function DashboardClient({
       />
 
       {/* Powered by Untappd */}
-      <p className="text-[#374151] text-xs mt-auto pb-2">Powered by Untappd</p>
+      <p className="text-[#374151] text-xs pb-1">Powered by Untappd</p>
     </main>
   );
 }
