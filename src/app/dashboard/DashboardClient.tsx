@@ -250,9 +250,9 @@ function DrinkList({
   };
 
   return (
-    <div className="w-full max-w-sm mt-1 flex flex-col flex-1 min-h-0">
+    <div className="w-full max-w-sm mt-0 flex flex-col flex-1 min-h-0">
       {/* Header row with + button */}
-      <div className="flex items-center justify-between px-1 mb-2">
+      <div className="flex items-center justify-between px-1 mb-1">
         <h2 className="text-[#9ca3af] text-xs uppercase tracking-widest">
           Recent drinks · 24h window
         </h2>
@@ -738,7 +738,7 @@ export default function DashboardClient({
 
   return (
     <main
-      className="flex flex-col items-center px-4 py-3 gap-3 overflow-hidden"
+      className="flex flex-col items-center px-4 py-3 gap-2 overflow-hidden"
       style={{
         height: '100dvh',
         backgroundColor: '#080604',
