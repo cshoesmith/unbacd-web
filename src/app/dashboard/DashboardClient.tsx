@@ -210,16 +210,16 @@ function DrinkList({
         <button
           onClick={openForm}
           className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-lg leading-none transition-colors"
-          aria-label="Add manual beer"
+          aria-label="Add phantom beer"
         >
           +
         </button>
       </div>
 
-      {/* Manual beer add form */}
+      {/* Phantom add form */}
       {showForm && (
         <div className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/20 rounded-xl px-4 py-3 gap-3 mb-2">
-          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add manual beer</p>
+          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add phantom beer</p>
 
           <input
             type="text"
@@ -336,6 +336,7 @@ function DrinkList({
                   </div>
                 </div>
               );
+            }
 
             return (
               <div
