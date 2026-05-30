@@ -69,20 +69,6 @@ function BacCircle({
         transition: flashing ? 'none' : 'background-color 0.6s ease',
       }}
     >
-      {/* Emboss watermark image below last sync */}
-      <div className="absolute top-[41px] left-1/2 pointer-events-none select-none z-0" style={{ transform: 'translateX(-50%)' }}>
-        <img
-          src={pbu80Yellow.src}
-          alt=""
-          aria-hidden="true"
-          className="w-28 h-auto"
-          style={{
-            opacity: 0.92,
-            filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.20)) drop-shadow(0 -1px 2px rgba(0,0,0,0.55))',
-          }}
-        />
-      </div>
-
       {/* BAC number + unit labels */}
       <div className="flex flex-col items-center gap-1 relative z-10">
         <div className="flex items-center gap-1.5">
@@ -766,12 +752,20 @@ export default function DashboardClient({
           <img src="/unbacd.png" alt="un'bac'd" width={36} height={36} className="rounded-lg" />
           <h1 className="text-2xl font-black text-[#ffd166] tracking-widest">un'bac'd</h1>
         </div>
-        <button
-          onClick={() => setShowLogoutModal(true)}
-          className="text-[#6b7280] text-xs hover:text-[#9ca3af] transition-colors cursor-pointer"
-        >
-          @{username}
-        </button>
+        <div className="flex flex-col items-end gap-0.5">
+          <img
+            src={pbu80Yellow.src}
+            alt="Powered by Untappd"
+            className="w-28 h-auto"
+            style={{ filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.15)) drop-shadow(0 -1px 2px rgba(0,0,0,0.45))' }}
+          />
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="text-[#6b7280] text-xs hover:text-[#9ca3af] transition-colors cursor-pointer"
+          >
+            @{username}
+          </button>
+        </div>
       </div>
 
       {/* BAC circle */}
