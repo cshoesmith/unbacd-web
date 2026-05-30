@@ -71,13 +71,15 @@ function BacCircle({
     >
       {/* Emboss watermark image below last sync */}
       <div className="absolute top-[41px] left-1/2 pointer-events-none select-none z-0" style={{ transform: 'translateX(-50%)' }}>
-        <img
-          src={pbu80Yellow.src}
-          alt=""
-          aria-hidden="true"
-          className="w-20 h-auto"
-          style={{ opacity: 0.38, filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.12)) drop-shadow(0 -1px 1px rgba(0,0,0,0.35))' }}
-        />
+        <div className="px-2 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(0,0,0,0.18)' }}>
+          <img
+            src={pbu80Yellow.src}
+            alt=""
+            aria-hidden="true"
+            className="w-24 h-auto"
+            style={{ opacity: 0.68, filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.18)) drop-shadow(0 -1px 1px rgba(0,0,0,0.45))' }}
+          />
+        </div>
       </div>
 
       {/* BAC number + unit labels */}
