@@ -69,7 +69,7 @@ function BacCircle({
       }}
     >
       {/* Subtle embossed watermark below last sync */}
-      <div className="absolute top-[38px] left-1/2 pointer-events-none select-none z-0" style={{ transform: 'translateX(-50%)' }}>
+      <div className="absolute top-[41px] left-1/2 pointer-events-none select-none z-0" style={{ transform: 'translateX(-50%)' }}>
         <span
           className="text-[11px] font-semibold tracking-[0.18em] uppercase whitespace-nowrap"
           style={{
