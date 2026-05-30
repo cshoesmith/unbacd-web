@@ -1,6 +1,8 @@
 package com.chris.unbacd.web;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -10,6 +12,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.speech.RecognizerIntent;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -52,6 +55,7 @@ public class MainActivity extends Activity {
     private static final String PREFS_NAME        = "unbacd-web";
     private static final String PREF_DEVICE_TOKEN = "device-token";
     private static final String WEB_API_BASE      = "https://unbacd-web.vercel.app";
+    private static final int REQUEST_VOICE_BEER_NAME = 9001;
 
     // BAC thresholds
     private static final double BAC_DO_NOT_DRIVE = 0.05;
@@ -129,6 +133,7 @@ public class MainActivity extends Activity {
     private Button connectBtn;
     private ListView beerListView;
     private TextView beerSelectedLabel;
+    private EditText pendingVoiceBeerNameInput;
 
     private final Runnable uiTicker = new Runnable() {
         @Override public void run() {
@@ -174,6 +179,25 @@ public class MainActivity extends Activity {
         isFlashing = false;
         flashHandler.removeCallbacks(flashRunnable);
         super.onPause();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_VOICE_BEER_NAME) return;
+        if (resultCode != RESULT_OK || data == null) {
+            Toast.makeText(this, "Voice input canceled", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+        if (matches == null || matches.isEmpty()) {
+            Toast.makeText(this, "No speech captured", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pendingVoiceBeerNameInput != null) {
+            pendingVoiceBeerNameInput.setText(matches.get(0));
+            pendingVoiceBeerNameInput.setSelection(pendingVoiceBeerNameInput.getText().length());
+        }
     }
 
     // ── Polling ──────────────────────────────────────────────────────────────
@@ -647,14 +671,44 @@ public class MainActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(14), dp(10), dp(14), dp(4));
 
+        LinearLayout nameHeader = new LinearLayout(this);
+        nameHeader.setOrientation(LinearLayout.HORIZONTAL);
+        nameHeader.setGravity(Gravity.CENTER_VERTICAL);
+
         TextView nameLabel = tv("Beer name", 11, 0xff9ca3af, Typeface.BOLD);
-        form.addView(nameLabel);
+        LinearLayout.LayoutParams nameLabelLp = new LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        nameHeader.addView(nameLabel, nameLabelLp);
+
+        Button voiceBtn = new Button(this);
+        voiceBtn.setText("Voice");
+        voiceBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f);
+        voiceBtn.setMinHeight(0);
+        voiceBtn.setMinimumHeight(0);
+        voiceBtn.setPadding(dp(10), dp(2), dp(10), dp(2));
+        nameHeader.addView(voiceBtn, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+
+        LinearLayout.LayoutParams nameHeaderLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        nameHeaderLp.bottomMargin = dp(4);
+        form.addView(nameHeader, nameHeaderLp);
 
         EditText nameInput = new EditText(this);
         nameInput.setHint("e.g. Test beer");
         nameInput.setHintTextColor(0xff6b7280);
         nameInput.setTextColor(0xfff3f4f6);
         nameInput.setSingleLine(true);
+        nameInput.setInputType(InputType.TYPE_NULL);
+        nameInput.setFocusable(false);
+        nameInput.setClickable(true);
         nameInput.setBackground(roundRect(0xff252220, 10));
         nameInput.setPadding(dp(10), dp(8), dp(10), dp(8));
         LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(
@@ -663,6 +717,21 @@ public class MainActivity extends Activity {
         );
         nameLp.bottomMargin = dp(10);
         form.addView(nameInput, nameLp);
+
+        pendingVoiceBeerNameInput = nameInput;
+
+        View.OnClickListener startVoiceCapture = v -> {
+            try {
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say beer name");
+                startActivityForResult(intent, REQUEST_VOICE_BEER_NAME);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "Voice input not available", Toast.LENGTH_SHORT).show();
+            }
+        };
+        voiceBtn.setOnClickListener(startVoiceCapture);
+        nameInput.setOnClickListener(startVoiceCapture);
 
         TextView abvLabel = tv("ABV %", 11, 0xff9ca3af, Typeface.BOLD);
         form.addView(abvLabel);
@@ -747,8 +816,9 @@ public class MainActivity extends Activity {
                     }
                     int volumeMl = volumeValues[selectedVolume[0]];
                     addManualBeer(beerName, abv, volumeMl);
+                    pendingVoiceBeerNameInput = null;
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton("Cancel", (d, w) -> pendingVoiceBeerNameInput = null)
                 .create();
 
         dialog.show();
