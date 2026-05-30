@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
         Integer volumeMlOverride;
         long createdAtMs;
         boolean phantom;
+        double bacAtTime;
     }
 
     // Flash state for danger zone (BAC >= 0.20)
@@ -244,6 +245,7 @@ public class MainActivity extends Activity {
                     item.servingType = c.optString("servingType", "");
                     item.createdAtMs = c.optLong("createdAtMs", 0L);
                     item.phantom = c.optBoolean("phantom", false);
+                    item.bacAtTime = c.optDouble("bacAtTime", 0.0);
                     if (c.has("volumeMlOverride") && !c.isNull("volumeMlOverride")) {
                         item.volumeMlOverride = c.optInt("volumeMlOverride");
                     }
@@ -455,25 +457,56 @@ public class MainActivity extends Activity {
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, rows) {
             @Override
             public View getView(int position, View convertView, android.view.ViewGroup parent) {
-                TextView tv = (TextView) super.getView(position, convertView, parent);
-                tv.setSingleLine(true);
-                tv.setEllipsize(TextUtils.TruncateAt.END);
-                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
-                tv.setPadding(dp(12), dp(8), dp(12), dp(8));
+                LinearLayout card = new LinearLayout(MainActivity.this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(10), dp(8), dp(10), dp(8));
 
-                boolean isSelected = (position == selectedBeerIndex && selectedBeerIndex >= 0 && selectedBeerIndex < beerListItems.size());
-                if (isSelected) {
-                    tv.setTextColor(0xff080604);
-                    tv.setBackgroundColor(0xff0d9488);
+                GradientDrawable bg = new GradientDrawable();
+                bg.setShape(GradientDrawable.RECTANGLE);
+                bg.setCornerRadius(dp(10));
+
+                if (position >= 0 && position < beerListItems.size()) {
+                    WatchBeerItem item = beerListItems.get(position);
+                    boolean isSelected = (position == selectedBeerIndex && selectedBeerIndex >= 0 && selectedBeerIndex < beerListItems.size());
+                    int borderColor = bacBorderColor(item.bacAtTime);
+
+                    bg.setColor(isSelected ? 0xff242726 : 0xff1e1b19);
+                    bg.setStroke(dp(isSelected ? 2 : 1), borderColor);
+                    card.setBackground(bg);
+
+                    TextView title = tv(item.beerName, 11, 0xfff3f4f6, Typeface.BOLD);
+                    title.setSingleLine(true);
+                    title.setEllipsize(TextUtils.TruncateAt.END);
+                    card.addView(title);
+
+                    String meta = String.format(
+                            Locale.US,
+                            "%.1f%% · %s%s",
+                            item.abv,
+                            formatAgo(Math.max(0, System.currentTimeMillis() - item.createdAtMs)),
+                            item.phantom ? " · Manual" : ""
+                    );
+                    TextView subtitle = tv(meta, 10, 0xff9ca3af, Typeface.NORMAL);
+                    subtitle.setSingleLine(true);
+                    subtitle.setEllipsize(TextUtils.TruncateAt.END);
+                    card.addView(subtitle);
                 } else {
-                    tv.setTextColor(0xffe5e7eb);
-                    tv.setBackgroundColor(Color.TRANSPARENT);
+                    bg.setColor(0xff1e1b19);
+                    bg.setStroke(dp(1), 0xff4b5563);
+                    card.setBackground(bg);
+
+                    TextView empty = tv("No beers yet", 11, 0xff9ca3af, Typeface.NORMAL);
+                    empty.setGravity(Gravity.CENTER_HORIZONTAL);
+                    card.addView(empty);
                 }
-                return tv;
+
+                return card;
             }
         };
         beerListView.setAdapter(adapter);
         beerListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        beerListView.setDivider(new ColorDrawable(Color.TRANSPARENT));
+        beerListView.setDividerHeight(dp(6));
         if (selectedBeerIndex >= 0) {
             beerListView.setItemChecked(selectedBeerIndex, true);
         }
@@ -892,6 +925,15 @@ public class MainActivity extends Activity {
         return (mins / 60) + "h ago";
     }
 
+    private int bacBorderColor(double bac) {
+        if (bac < 0.02) return 0xff22c55e; // green
+        if (bac < 0.04) return 0xff84cc16; // lime
+        if (bac < 0.06) return 0xffeab308; // yellow
+        if (bac < 0.10) return 0xfff59e0b; // amber
+        if (bac < 0.15) return 0xffff6b35; // orange
+        return 0xffef4444; // red
+    }
+
     // ── UI construction ───────────────────────────────────────────────────────
 
     private void buildUi() {
@@ -1065,7 +1107,7 @@ public class MainActivity extends Activity {
         beerListView.setFastScrollEnabled(false);
         LinearLayout.LayoutParams beerListLp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            dp(98));
+            dp(120));
         beerListLp.topMargin = dp(4);
         beerModalCard.addView(beerListView, beerListLp);
 

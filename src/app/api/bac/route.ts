@@ -7,6 +7,49 @@ import { calculateBac } from '@/lib/bac';
 // BAC is always recalculated at the current time regardless.
 const UNTAPPD_FRESH_MS = 5 * 60_000;
 
+function toWatchCheckins(
+  checkins: Array<{
+    checkinId: number;
+    beerName: string;
+    breweryName: string;
+    abv: number;
+    servingType: string;
+    volumeMlOverride?: number;
+    createdAtMs: number;
+    phantom?: true;
+  }>,
+  user: { weightKg: number; gender: 'male' | 'female'; defaultServingMl?: number | null },
+) {
+  return checkins.map(c => {
+    const bacAtTime = calculateBac(
+      checkins
+        .filter(x => x.createdAtMs <= c.createdAtMs)
+        .map(x => ({
+          createdAtMs:      x.createdAtMs,
+          abv:              x.abv,
+          servingType:      x.servingType,
+          volumeMlOverride: x.volumeMlOverride,
+        })),
+      user.weightKg,
+      user.gender,
+      user.defaultServingMl ?? undefined,
+      c.createdAtMs,
+    ).bac;
+
+    return {
+      checkinId: c.checkinId,
+      beerName: c.beerName,
+      breweryName: c.breweryName,
+      abv: c.abv,
+      servingType: c.servingType,
+      volumeMlOverride: c.volumeMlOverride,
+      createdAtMs: c.createdAtMs,
+      phantom: c.phantom === true,
+      bacAtTime,
+    };
+  });
+}
+
 /**
  * GET /api/bac?device={token}
  *
@@ -53,16 +96,7 @@ export async function GET(req: NextRequest) {
       drinkCount:   result.drinkCount,
       calculatedAt: result.calculatedAt,
       username:     user.username,
-      checkins:     cached.checkins.map(c => ({
-        checkinId: c.checkinId,
-        beerName: c.beerName,
-        breweryName: c.breweryName,
-        abv: c.abv,
-        servingType: c.servingType,
-        volumeMlOverride: c.volumeMlOverride,
-        createdAtMs: c.createdAtMs,
-        phantom: c.phantom === true,
-      })),
+      checkins:     toWatchCheckins(cached.checkins, user),
       fromCache:    true,
     });
   }
@@ -119,16 +153,7 @@ export async function GET(req: NextRequest) {
       drinkCount:   result.drinkCount,
       calculatedAt: result.calculatedAt,
       username:     user.username,
-      checkins:     allCheckins.map(c => ({
-        checkinId: c.checkinId,
-        beerName: c.beerName,
-        breweryName: c.breweryName,
-        abv: c.abv,
-        servingType: c.servingType,
-        volumeMlOverride: c.volumeMlOverride,
-        createdAtMs: c.createdAtMs,
-        phantom: c.phantom === true,
-      })),
+      checkins:     toWatchCheckins(allCheckins, user),
       fromCache:    false,
     });
   } catch (err) {
@@ -151,16 +176,7 @@ export async function GET(req: NextRequest) {
         drinkCount:   result.drinkCount,
         calculatedAt: result.calculatedAt,
         username:     user.username,
-        checkins:     cached.checkins.map(c => ({
-          checkinId: c.checkinId,
-          beerName: c.beerName,
-          breweryName: c.breweryName,
-          abv: c.abv,
-          servingType: c.servingType,
-          volumeMlOverride: c.volumeMlOverride,
-          createdAtMs: c.createdAtMs,
-          phantom: c.phantom === true,
-        })),
+        checkins:     toWatchCheckins(cached.checkins, user),
         fromCache:    true,
         stale:        true,
       });
