@@ -366,6 +366,7 @@ function DrinkList({
                     </div>
                   </div>
                 </div>
+              </div>
               );
 
             return (
