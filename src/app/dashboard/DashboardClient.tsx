@@ -283,7 +283,7 @@ function DrinkList({
 
       {/* Drink list */}
       {recent.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-2">
           {recent.map((c, i) => {
             const pending = pendingIds.has(c.checkinId ?? -1);
 
