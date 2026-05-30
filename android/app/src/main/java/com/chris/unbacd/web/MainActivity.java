@@ -571,6 +571,36 @@ public class MainActivity extends Activity {
         screen.setBackgroundColor(0xff0f0d0b);
         screen.setGravity(Gravity.CENTER_HORIZONTAL);
 
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams topRowLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+
+        TextView topSpacer = tv("", 12, 0x00ffffff, Typeface.NORMAL);
+        LinearLayout.LayoutParams spacerLp = new LinearLayout.LayoutParams(
+            0,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        topRow.addView(topSpacer, spacerLp);
+
+        Button closeTopBtn = new Button(this);
+        closeTopBtn.setText("Close");
+        closeTopBtn.setAllCaps(false);
+        closeTopBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        closeTopBtn.setTextColor(0xffe5e7eb);
+        closeTopBtn.setBackground(roundRect(0xff272522, 999));
+        closeTopBtn.setPadding(dp(12), dp(5), dp(12), dp(5));
+        topRow.addView(closeTopBtn, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+
+        screen.addView(topRow, topRowLp);
+
         TextView title = tv(item.beerName, 15, 0xfff3f4f6, Typeface.BOLD);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
@@ -668,18 +698,6 @@ public class MainActivity extends Activity {
         metaLp.topMargin = dp(10);
         screen.addView(detailMeta, metaLp);
 
-        Button closeBtn = new Button(this);
-        closeBtn.setText("Close");
-        closeBtn.setTextColor(0xffe5e7eb);
-        closeBtn.setBackground(roundRect(0xff272522, 999));
-        closeBtn.setPadding(dp(12), dp(7), dp(12), dp(7));
-        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        closeLp.topMargin = dp(10);
-        screen.addView(closeBtn, closeLp);
-
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
                 .setView(screen)
                 .setCancelable(true)
@@ -697,7 +715,7 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             deleteSelectedBeer();
         });
-        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        closeTopBtn.setOnClickListener(v -> dialog.dismiss());
 
         dialog.show();
         if (dialog.getWindow() != null) {
