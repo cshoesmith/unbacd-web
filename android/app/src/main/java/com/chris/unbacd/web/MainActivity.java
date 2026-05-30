@@ -2,6 +2,7 @@ package com.chris.unbacd.web;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -450,7 +451,26 @@ public class MainActivity extends Activity {
             selectedBeerIndex = 0;
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_activated_1, rows);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, rows) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+                tv.setSingleLine(true);
+                tv.setEllipsize(TextUtils.TruncateAt.END);
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
+                tv.setPadding(dp(12), dp(8), dp(12), dp(8));
+
+                boolean isSelected = (position == selectedBeerIndex && selectedBeerIndex >= 0 && selectedBeerIndex < beerListItems.size());
+                if (isSelected) {
+                    tv.setTextColor(0xff080604);
+                    tv.setBackgroundColor(0xff0d9488);
+                } else {
+                    tv.setTextColor(0xffe5e7eb);
+                    tv.setBackgroundColor(Color.TRANSPARENT);
+                }
+                return tv;
+            }
+        };
         beerListView.setAdapter(adapter);
         beerListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         if (selectedBeerIndex >= 0) {
@@ -493,42 +513,37 @@ public class MainActivity extends Activity {
             return;
         }
 
-        final EditText input = new EditText(this);
-        input.setHint("ml (blank = clear)");
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        final Integer[] optionValues = new Integer[] { null, 150, 285, 330, 375, 450, 500, 570 };
+        final String[] optionLabels = new String[] {
+                "Clear override (Auto)",
+                "150 ml",
+                "285 ml (Middie)",
+                "330 ml (Euro)",
+                "375 ml (Can)",
+                "450 ml (Schooner)",
+                "500 ml",
+                "570 ml (Pint)"
+        };
+
+        int preselect = 0;
         if (item.volumeMlOverride != null) {
-            input.setText(String.valueOf(item.volumeMlOverride));
-            input.setSelection(input.getText().length());
-        }
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
-                .setTitle("Edit serving")
-                .setMessage(item.beerName)
-                .setView(input)
-                .setPositiveButton("Save", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-
-        dialog.setOnShowListener(d -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String txt = input.getText().toString().trim();
-            Integer ml = null;
-            if (!txt.isEmpty()) {
-                try {
-                    ml = Integer.parseInt(txt);
-                    if (ml < 50 || ml > 2000) {
-                        Toast.makeText(this, "Use 50-2000 ml", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                } catch (NumberFormatException e) {
-                    Toast.makeText(this, "Invalid number", Toast.LENGTH_SHORT).show();
-                    return;
+            for (int i = 1; i < optionValues.length; i++) {
+                if (item.volumeMlOverride.equals(optionValues[i])) {
+                    preselect = i;
+                    break;
                 }
             }
-            patchServing(item.checkinId, ml);
-            dialog.dismiss();
-        }));
+        }
 
-        dialog.show();
+        final int[] selected = new int[] { preselect };
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Set serving size")
+                .setMessage(item.beerName + "\nChoose one option")
+                .setSingleChoiceItems(optionLabels, preselect, (d, which) -> selected[0] = which)
+                .setPositiveButton("Save", (d, w) -> patchServing(item.checkinId, optionValues[selected[0]]))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void deleteSelectedBeer() {
@@ -839,10 +854,12 @@ public class MainActivity extends Activity {
         beerListView = new ListView(this);
         beerListView.setDividerHeight(dp(2));
         beerListView.setBackgroundColor(0x00000000);
+        beerListView.setVerticalScrollBarEnabled(false);
+        beerListView.setFastScrollEnabled(false);
         LinearLayout.LayoutParams beerListLp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
-            dp(120));
-        beerListLp.topMargin = dp(6);
+            dp(98));
+        beerListLp.topMargin = dp(4);
         beerModalCard.addView(beerListView, beerListLp);
 
         beerListView.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
@@ -856,30 +873,44 @@ public class MainActivity extends Activity {
         actionRow.setOrientation(LinearLayout.HORIZONTAL);
         actionRow.setGravity(Gravity.CENTER);
         actionRow.setPadding(0, dp(8), 0, 0);
+        actionRow.setWeightSum(3f);
+
+        LinearLayout.LayoutParams actionBtnLp = new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        actionBtnLp.leftMargin = dp(2);
+        actionBtnLp.rightMargin = dp(2);
 
         Button detailsBtn = new Button(this);
         detailsBtn.setText("Details");
-        detailsBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        detailsBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        detailsBtn.setMinHeight(0);
+        detailsBtn.setMinimumHeight(0);
+        detailsBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
         detailsBtn.setOnClickListener(v -> showBeerDetails());
+        detailsBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
 
         Button editBtn = new Button(this);
         editBtn.setText("Edit");
-        editBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        editBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        editBtn.setMinHeight(0);
+        editBtn.setMinimumHeight(0);
+        editBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
         editBtn.setOnClickListener(v -> editSelectedBeer());
+        editBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
 
         Button deleteBtn = new Button(this);
         deleteBtn.setText("Delete");
-        deleteBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        deleteBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        deleteBtn.setMinHeight(0);
+        deleteBtn.setMinimumHeight(0);
+        deleteBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
         deleteBtn.setOnClickListener(v -> deleteSelectedBeer());
+        deleteBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
 
         actionRow.addView(detailsBtn);
         actionRow.addView(editBtn);
         actionRow.addView(deleteBtn);
         beerModalCard.addView(actionRow);
-
-        TextView beerHint = tv("Tap outside to close", 10, 0xff9ca3af, Typeface.NORMAL);
-        beerHint.setGravity(Gravity.CENTER_HORIZONTAL);
-        beerModalCard.addView(beerHint, centredLp(dp(8)));
 
         FrameLayout.LayoutParams beerModalLp = new FrameLayout.LayoutParams(
             dp(190), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
