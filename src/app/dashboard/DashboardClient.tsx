@@ -920,8 +920,8 @@ export default function DashboardClient({
         now={now}
       />
 
-      {/* Powered by Untappd */}
-      <p className="text-[#374151] text-xs pb-1">Powered by Untappd</p>
+      {/* Footer attribution */}
+      <p className="text-[#374151] text-xs pb-1">Created by craftbeers.app</p>
     </main>
   );
 }
