@@ -25,12 +25,14 @@ export async function POST(req: NextRequest) {
     abv?: unknown;
     volumeMl?: unknown;
     createdAtMs?: unknown;
+    repeat?: unknown;
   };
 
   const beerName    = typeof body.beerName   === 'string'  ? body.beerName.trim() : '';
   const abv         = typeof body.abv        === 'number'  ? body.abv             : NaN;
   const volumeMl    = typeof body.volumeMl   === 'number'  ? body.volumeMl        : NaN;
   const createdAtMs = typeof body.createdAtMs === 'number' ? body.createdAtMs     : NaN;
+  const repeat      = typeof body.repeat     === 'boolean' ? body.repeat         : false;
 
   if (!beerName || isNaN(abv) || isNaN(volumeMl) || isNaN(createdAtMs)) {
     return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
     createdAtMs,
     volumeMlOverride: volumeMl,
     phantom:          true,
+    repeat:           repeat ? true : undefined,
   };
 
   const updatedCheckins = [

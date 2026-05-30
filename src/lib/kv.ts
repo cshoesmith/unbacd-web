@@ -35,6 +35,8 @@ export interface CachedCheckin {
   volumeMlOverride?: number;
   /** true for manually-added "phantom" beers (not from Untappd) */
   phantom?: true;
+  /** true for beers added via the repeat function */
+  repeat?: true;
 }
 
 export interface DeviceRecord {

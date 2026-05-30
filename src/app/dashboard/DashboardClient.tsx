@@ -165,7 +165,7 @@ function DrinkList({
   checkins: CachedCheckin[];
   pendingIds: Set<number>;
   onServingChange: (checkinId: number, volumeMl: number | null) => Promise<void>;
-  onPhantomAdd: (data: { beerName: string; abv: number; volumeMl: number; createdAtMs: number }) => Promise<void>;
+  onPhantomAdd: (data: { beerName: string; abv: number; volumeMl: number; createdAtMs: number; repeat?: boolean }) => Promise<void>;
   onPhantomRemove: (checkinId: number) => Promise<void>;
   defaultServingMl: number | null;
   now: number;
@@ -173,12 +173,14 @@ function DrinkList({
   const [showForm, setShowForm]   = useState(false);
   const [draft, setDraft]         = useState(PHANTOM_DEFAULT);
   const [submitting, setSubmitting] = useState(false);
+  const [isRepeat, setIsRepeat]   = useState(false);
 
   const cutoff = now - 24 * 60 * 60_000;
   const recent = checkins.filter(c => c.createdAtMs >= cutoff).sort((a, b) => b.createdAtMs - a.createdAtMs);
 
   const openForm = () => {
     setDraft({ ...PHANTOM_DEFAULT, createdAtMs: toDatetimeLocal(Date.now()) });
+    setIsRepeat(false);
     setShowForm(true);
   };
 
@@ -190,7 +192,7 @@ function DrinkList({
     if (isNaN(abv) || isNaN(volumeMl) || isNaN(createdAtMs)) return;
     setSubmitting(true);
     try {
-      await onPhantomAdd({ beerName: draft.beerName.trim(), abv, volumeMl, createdAtMs });
+      await onPhantomAdd({ beerName: draft.beerName.trim(), abv, volumeMl, createdAtMs, repeat: isRepeat });
       setShowForm(false);
     } finally {
       setSubmitting(false);
@@ -295,6 +297,7 @@ function DrinkList({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
+                        {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
                       </div>
                       <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
                     </div>
@@ -311,6 +314,7 @@ function DrinkList({
                             volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
                             createdAtMs: toDatetimeLocal(Date.now()),
                           });
+                          setIsRepeat(true);
                           setShowForm(true);
                         }}
                         disabled={pending}
@@ -519,7 +523,7 @@ export default function DashboardClient({
   }, []);
 
   const addPhantom = useCallback(async (data: {
-    beerName: string; abv: number; volumeMl: number; createdAtMs: number;
+    beerName: string; abv: number; volumeMl: number; createdAtMs: number; repeat?: boolean;
   }) => {
     const res = await fetch('/api/phantom', {
       method: 'POST',
