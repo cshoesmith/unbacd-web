@@ -53,6 +53,11 @@ export async function GET(req: NextRequest) {
       drinkCount:   result.drinkCount,
       calculatedAt: result.calculatedAt,
       username:     user.username,
+      checkins:     cached.checkins.map(c => ({
+        beerName: c.beerName,
+        abv: c.abv,
+        createdAtMs: c.createdAtMs,
+      })),
       fromCache:    true,
     });
   }
@@ -108,6 +113,11 @@ export async function GET(req: NextRequest) {
       drinkCount:   result.drinkCount,
       calculatedAt: result.calculatedAt,
       username:     user.username,
+      checkins:     allCheckins.map(c => ({
+        beerName: c.beerName,
+        abv: c.abv,
+        createdAtMs: c.createdAtMs,
+      })),
       fromCache:    false,
     });
   } catch (err) {
@@ -130,6 +140,11 @@ export async function GET(req: NextRequest) {
         drinkCount:   result.drinkCount,
         calculatedAt: result.calculatedAt,
         username:     user.username,
+        checkins:     cached.checkins.map(c => ({
+          beerName: c.beerName,
+          abv: c.abv,
+          createdAtMs: c.createdAtMs,
+        })),
         fromCache:    true,
         stale:        true,
       });

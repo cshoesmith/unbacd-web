@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -19,9 +20,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -29,6 +32,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -70,6 +76,7 @@ public class MainActivity extends Activity {
     private boolean pollInFlight     = false;
     private boolean pairingInFlight  = false;
     private String  deviceToken      = null;
+    private final List<String> beerListItems = new ArrayList<>();
 
     // Flash state for danger zone (BAC >= 0.20)
     private boolean isFlashing = false;
@@ -96,10 +103,12 @@ public class MainActivity extends Activity {
     private TextView staleText;
     private TextView doNotDriveText;
     private TextView doNotWalkText;
+    private FrameLayout beerListOverlay;
     private FrameLayout pairingOverlay;
     private FrameLayout splashOverlay;
     private EditText pinEditText;
     private Button connectBtn;
+    private LinearLayout beerListContainer;
 
     private final Runnable uiTicker = new Runnable() {
         @Override public void run() {
@@ -199,13 +208,33 @@ public class MainActivity extends Activity {
             generatedAt      = obj.optLong("calculatedAt", System.currentTimeMillis());
             updatedAt        = System.currentTimeMillis();
             syncRequestSent  = false;
+
+            beerListItems.clear();
+            JSONArray checkins = obj.optJSONArray("checkins");
+            if (checkins != null) {
+                for (int i = 0; i < checkins.length(); i++) {
+                    JSONObject c = checkins.optJSONObject(i);
+                    if (c == null) continue;
+                    String beerName = c.optString("beerName", "").trim();
+                    if (beerName.isEmpty()) continue;
+                    double abv = c.optDouble("abv", -1.0);
+                    String row = beerName;
+                    if (abv >= 0.0) {
+                        row += " \u00b7 " + String.format(Locale.US, "%.1f%%", abv);
+                    }
+                    beerListItems.add(row);
+                }
+            }
+
             refreshAll();
+            refreshBeerListUi();
         } catch (Exception ignored) {}
     }
 
     // ── Pairing ──────────────────────────────────────────────────────────────
 
     private void showPairingOverlay() {
+        hideBeerListOverlay();
         pairingOverlay.setVisibility(View.VISIBLE);
         rootLayout.setBackgroundColor(BG_DEFAULT);
     }
@@ -359,6 +388,39 @@ public class MainActivity extends Activity {
         if (!isStale) syncRequestSent = false;
     }
 
+    // ── Beer list modal ─────────────────────────────────────────────────────
+
+    private void showBeerListOverlay() {
+        if (beerListOverlay == null) return;
+        refreshBeerListUi();
+        beerListOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void hideBeerListOverlay() {
+        if (beerListOverlay == null) return;
+        beerListOverlay.setVisibility(View.GONE);
+    }
+
+    private void refreshBeerListUi() {
+        if (beerListContainer == null) return;
+        beerListContainer.removeAllViews();
+
+        if (beerListItems.isEmpty()) {
+            TextView empty = tv("No beers yet", 12, 0xff9ca3af, Typeface.NORMAL);
+            empty.setGravity(Gravity.CENTER_HORIZONTAL);
+            beerListContainer.addView(empty, centredLp(dp(4)));
+            return;
+        }
+
+        int maxRows = Math.min(beerListItems.size(), 20);
+        for (int i = 0; i < maxRows; i++) {
+            TextView row = tv("\u2022 " + beerListItems.get(i), 12, 0xffe5e7eb, Typeface.NORMAL);
+            row.setMaxLines(1);
+            row.setEllipsize(TextUtils.TruncateAt.END);
+            beerListContainer.addView(row, lp(i == 0 ? 0 : dp(4), 0, 0, 0));
+        }
+    }
+
     // ── Theme ─────────────────────────────────────────────────────────────────
 
     private int bacBgColor(double bac) {
@@ -436,6 +498,16 @@ public class MainActivity extends Activity {
         rootLayout = new FrameLayout(this);
         rootLayout.setBackgroundColor(BG_DEFAULT);
         FrameLayout root = rootLayout;
+
+        root.setOnClickListener(v -> {
+            if (pairingOverlay != null && pairingOverlay.getVisibility() == View.VISIBLE) return;
+            if (splashOverlay != null && splashOverlay.getVisibility() == View.VISIBLE) return;
+            if (beerListOverlay != null && beerListOverlay.getVisibility() == View.VISIBLE) {
+                hideBeerListOverlay();
+            } else {
+                showBeerListOverlay();
+            }
+        });
 
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -563,6 +635,50 @@ public class MainActivity extends Activity {
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         dnwLp.bottomMargin = dp(28);
         root.addView(doNotWalkText, dnwLp);
+
+        // Beer list modal overlay (tap watch to open)
+        beerListOverlay = new FrameLayout(this);
+        beerListOverlay.setBackgroundColor(0xe6080604);
+        beerListOverlay.setVisibility(View.GONE);
+        beerListOverlay.setClickable(true);
+        beerListOverlay.setOnClickListener(v -> hideBeerListOverlay());
+
+        LinearLayout beerModalCard = new LinearLayout(this);
+        beerModalCard.setOrientation(LinearLayout.VERTICAL);
+        beerModalCard.setPadding(dp(12), dp(12), dp(12), dp(12));
+        beerModalCard.setBackground(roundRect(0xff1a1816, 16));
+        beerModalCard.setClickable(true);
+        beerModalCard.setOnClickListener(v -> { /* keep overlay open when tapping card */ });
+
+        TextView beerTitle = tv("Recent beers", 14, COLOR_ACCENT, Typeface.BOLD);
+        beerTitle.setGravity(Gravity.CENTER_HORIZONTAL);
+        beerModalCard.addView(beerTitle, centredLp(0));
+
+        ScrollView beerScroll = new ScrollView(this);
+        beerScroll.setFillViewport(true);
+        LinearLayout.LayoutParams beerScrollLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(150));
+        beerScrollLp.topMargin = dp(8);
+
+        beerListContainer = new LinearLayout(this);
+        beerListContainer.setOrientation(LinearLayout.VERTICAL);
+        beerScroll.addView(beerListContainer, new ScrollView.LayoutParams(
+            ScrollView.LayoutParams.MATCH_PARENT,
+            ScrollView.LayoutParams.WRAP_CONTENT));
+        beerModalCard.addView(beerScroll, beerScrollLp);
+
+        TextView beerHint = tv("Tap outside to close", 10, 0xff9ca3af, Typeface.NORMAL);
+        beerHint.setGravity(Gravity.CENTER_HORIZONTAL);
+        beerModalCard.addView(beerHint, centredLp(dp(8)));
+
+        FrameLayout.LayoutParams beerModalLp = new FrameLayout.LayoutParams(
+            dp(190), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        beerListOverlay.addView(beerModalCard, beerModalLp);
+
+        root.addView(beerListOverlay, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT));
 
         // Pairing overlay — shown when no device token stored
         pairingOverlay = new FrameLayout(this);
