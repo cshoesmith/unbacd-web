@@ -62,15 +62,15 @@ function BacCircle({ bac }: { bac: number | null }) {
       <div className="flex flex-col items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span
-            className="text-5xl font-black tabular-nums"
-            style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}
+            className="font-black tabular-nums"
+            style={{ fontSize: '50px', color: isDark ? '#f3f4f6' : '#ffffff' }}
           >
             {bac !== null ? bac.toFixed(2) : '—'}
           </span>
           {bac !== null && (
             <div className="flex flex-col justify-center pb-0.5">
               <span className="text-sm font-bold leading-tight" style={{ color: isDark ? '#f3f4f6' : '#ffffff' }}>%BAC</span>
-              <span className="text-xs leading-tight text-[#9ca3af]">(est)</span>
+              <span className="text-xs leading-tight text-white">(est)</span>
             </div>
           )}
         </div>
@@ -542,6 +542,7 @@ export default function DashboardClient({
   const [syncError,    setSyncError]    = useState<string | null>(null);
   const [pin,          setPin]          = useState<string | null>(null);
   const [pairLoading,  setPairLoading]  = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const sync = useCallback(async () => {
     setSyncing(true);
@@ -684,7 +685,7 @@ export default function DashboardClient({
     : 'Not yet synced';
 
   return (
-    <main className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden pb-20" style={{ height: '100dvh', backgroundColor: '#080604' }}>
+    <main className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden" style={{ height: '100dvh', backgroundColor: '#080604' }}>
 
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between">
@@ -692,7 +693,12 @@ export default function DashboardClient({
           <img src="/unbacd.png" alt="un'bac'd" width={36} height={36} className="rounded-lg" />
           <h1 className="text-2xl font-black text-[#ffd166] tracking-widest">un'bac'd</h1>
         </div>
-        <span className="text-[#6b7280] text-xs">@{username}</span>
+        <button
+          onClick={() => setShowLogoutModal(true)}
+          className="text-[#6b7280] text-xs hover:text-[#9ca3af] transition-colors cursor-pointer"
+        >
+          @{username}
+        </button>
       </div>
 
       {/* BAC circle + all status messages grouped tightly */}
@@ -747,7 +753,31 @@ export default function DashboardClient({
           ⚙️
         </button>
       </div>
-
+      {/* Logout modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="bg-[#1a1816] rounded-t-2xl w-full px-4 py-4 flex flex-col gap-3">
+            <h2 className="text-white text-sm font-bold">Sign out</h2>
+            <p className="text-[#9ca3af] text-xs">Are you sure you want to sign out?</p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 bg-white/10 hover:bg-white/15 text-[#9ca3af] text-sm font-medium py-2.5 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <form action="/api/auth/logout" method="POST" className="flex-1">
+                <button
+                  type="submit"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Settings panel */}
       {showSettings && (
         <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
@@ -846,18 +876,8 @@ export default function DashboardClient({
         now={now}
       />
 
-      {/* Sign out */}
-      <form action="/api/auth/logout" method="POST" className="mt-auto pt-4">
-        <button
-          type="submit"
-          className="text-[#374151] text-xs hover:text-[#6b7280] transition-colors"
-        >
-          Sign out
-        </button>
-      </form>
-
       {/* Powered by Untappd */}
-      <p className="text-[#374151] text-xs pb-2">Powered by Untappd</p>
+      <p className="text-[#374151] text-xs mt-auto pb-2">Powered by Untappd</p>
     </main>
   );
 }
