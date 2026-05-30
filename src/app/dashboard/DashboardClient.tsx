@@ -225,7 +225,7 @@ function DrinkList({
     <div className="w-full max-w-sm mt-2">
       {/* Header row with + button */}
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="text-[#6b7280] text-xs uppercase tracking-widest">
+        <h2 className="text-[#9ca3af] text-xs uppercase tracking-widest">
           Recent drinks · 24h window
         </h2>
         <button
@@ -347,7 +347,7 @@ function DrinkList({
                           <RepeatIcon />
                         </button>
                       </div>
-                      <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                      <span className="text-xs text-[#9ca3af]">{timeSince(c.createdAtMs, now)}</span>
                     </div>
                   </div>
                   {/* Serving size selector + delete button */}
@@ -377,7 +377,7 @@ function DrinkList({
                     <button
                       onClick={() => setDeleteConfirmId(c.checkinId)}
                       disabled={pending}
-                      className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium ml-auto flex-shrink-0"
+                      className="text-[#9ca3af] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium ml-auto flex-shrink-0"
                       aria-label="Delete manual beer"
                     >
                       Delete
@@ -419,7 +419,7 @@ function DrinkList({
                         <RepeatIcon />
                       </button>
                     </div>
-                    <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                    <span className="text-xs text-[#9ca3af]">{timeSince(c.createdAtMs, now)}</span>
                   </div>
                 </div>
                 {/* Serving size selector */}
@@ -712,7 +712,7 @@ export default function DashboardClient({
               {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} in 24h window
             </p>
           )}
-          <p className="text-[#4b5563] text-xs">{lastSyncText}</p>
+          <p className="text-[#9ca3af] text-xs">{lastSyncText}</p>
         </div>
 
         {/* Sync error */}
