@@ -18,6 +18,7 @@ import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -557,11 +558,180 @@ public class MainActivity extends Activity {
         String details = item.beerName
                 + "\nABV: " + String.format(Locale.US, "%.1f%%", item.abv)
                 + (item.breweryName.isEmpty() ? "" : "\nBrewery: " + item.breweryName)
-                + "\nType: " + item.servingType
+            + "\nType: " + (item.phantom ? "Manual Add" : item.servingType)
                 + (item.volumeMlOverride == null ? "" : "\nOverride: " + item.volumeMlOverride + " ml")
-                + "\nWhen: " + formatAgo(Math.max(0, System.currentTimeMillis() - item.createdAtMs))
-                + (item.phantom ? "\nManual beer" : "");
+            + "\nWhen: " + formatAgo(Math.max(0, System.currentTimeMillis() - item.createdAtMs));
         Toast.makeText(this, details, Toast.LENGTH_LONG).show();
+    }
+
+    private void showBeerDetailsWindow(WatchBeerItem item) {
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setPadding(dp(24), dp(18), dp(24), dp(14));
+        screen.setBackgroundColor(0xff0f0d0b);
+        screen.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        TextView title = tv(item.beerName, 15, 0xfff3f4f6, Typeface.BOLD);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setGravity(Gravity.CENTER_HORIZONTAL);
+        screen.addView(title);
+
+        String subtitleText = item.breweryName == null || item.breweryName.isEmpty()
+                ? "@" + userName
+                : item.breweryName;
+        TextView subtitle = tv(subtitleText, 10, 0xff9ca3af, Typeface.NORMAL);
+        subtitle.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams subtitleLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        subtitleLp.topMargin = dp(3);
+        screen.addView(subtitle, subtitleLp);
+
+        TextView statBadge = tv(
+                String.format(Locale.US, "ABV %.1f%%  ·  BAC %.3f", item.abv, item.bacAtTime),
+                11,
+                0xff080604,
+                Typeface.BOLD
+        );
+        statBadge.setPadding(dp(10), dp(5), dp(10), dp(5));
+        statBadge.setBackground(roundRect(bacBorderColor(item.bacAtTime), 999));
+        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        badgeLp.topMargin = dp(8);
+        screen.addView(statBadge, badgeLp);
+
+        TextView actionsTitle = tv("Actions", 10, 0xff9ca3af, Typeface.BOLD);
+        actionsTitle.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams actionsTitleLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        actionsTitleLp.topMargin = dp(10);
+        screen.addView(actionsTitle, actionsTitleLp);
+
+        LinearLayout actionsRow = new LinearLayout(this);
+        actionsRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionsRow.setWeightSum(3f);
+        actionsRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams actionsRowLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        actionsRowLp.topMargin = dp(4);
+
+        LinearLayout.LayoutParams actionBtnLp = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+        );
+        actionBtnLp.leftMargin = dp(2);
+        actionBtnLp.rightMargin = dp(2);
+
+        Button editBadgeBtn = new Button(this);
+        editBadgeBtn.setText("✏️ Edit");
+        styleBadgeActionButton(editBadgeBtn, 0xff2dd4bf, 0xff071311);
+        editBadgeBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
+
+        Button repeatBadgeBtn = new Button(this);
+        repeatBadgeBtn.setText("🔁 Repeat");
+        styleBadgeActionButton(repeatBadgeBtn, COLOR_ACCENT, 0xff080604);
+        repeatBadgeBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
+
+        Button deleteBadgeBtn = new Button(this);
+        deleteBadgeBtn.setText("🗑 Del");
+        styleBadgeActionButton(deleteBadgeBtn, 0xffef4444, 0xffffffff);
+        deleteBadgeBtn.setLayoutParams(new LinearLayout.LayoutParams(actionBtnLp));
+
+        actionsRow.addView(editBadgeBtn);
+        actionsRow.addView(repeatBadgeBtn);
+        actionsRow.addView(deleteBadgeBtn);
+        screen.addView(actionsRow, actionsRowLp);
+
+        TextView detailMeta = tv(
+            "Type: " + (item.phantom ? "Manual Add" : item.servingType)
+                        + (item.volumeMlOverride == null ? "" : "\nOverride: " + item.volumeMlOverride + " ml")
+                + "\nChecked in: " + formatAgo(Math.max(0, System.currentTimeMillis() - item.createdAtMs)),
+                11,
+                0xffd1d5db,
+                Typeface.NORMAL
+        );
+        detailMeta.setLineSpacing(0f, 1.1f);
+        detailMeta.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams metaLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        metaLp.topMargin = dp(10);
+        screen.addView(detailMeta, metaLp);
+
+        Button closeBtn = new Button(this);
+        closeBtn.setText("Close");
+        closeBtn.setTextColor(0xffe5e7eb);
+        closeBtn.setBackground(roundRect(0xff272522, 999));
+        closeBtn.setPadding(dp(12), dp(7), dp(12), dp(7));
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        closeLp.topMargin = dp(10);
+        screen.addView(closeBtn, closeLp);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setView(screen)
+                .setCancelable(true)
+                .create();
+
+        editBadgeBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            editSelectedBeer();
+        });
+        repeatBadgeBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            repeatSelectedBeer(item);
+        });
+        deleteBadgeBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            deleteSelectedBeer();
+        });
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(roundRect(0xff0f0d0b, 18));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+    }
+
+    private void styleBadgeActionButton(Button btn, int bgColor, int textColor) {
+        btn.setAllCaps(false);
+        btn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        btn.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        btn.setTextColor(textColor);
+        btn.setBackground(roundRect(bgColor, 999));
+        btn.setPadding(dp(8), dp(7), dp(8), dp(7));
+        btn.setMinHeight(dp(34));
+        btn.setMinimumHeight(dp(34));
+    }
+
+    private int resolvedServingMl(WatchBeerItem item) {
+        if (item.volumeMlOverride != null && item.volumeMlOverride > 0) return item.volumeMlOverride;
+        String t = item.servingType == null ? "" : item.servingType.toLowerCase(Locale.US);
+        if (t.contains("middie") || t.contains("pot") || t.contains("half")) return 285;
+        if (t.contains("euro") || t.contains("bottle") || t.contains("stubby")) return 330;
+        if (t.contains("can") || t.contains("tinnie")) return 375;
+        if (t.contains("schooner")) return 450;
+        if (t.contains("pint")) return 570;
+        return 375;
+    }
+
+    private void repeatSelectedBeer(WatchBeerItem item) {
+        if (item == null) return;
+        int volumeMl = resolvedServingMl(item);
+        addManualBeer(item.beerName, item.abv, volumeMl, true);
     }
 
     private void editSelectedBeer() {
@@ -618,32 +788,58 @@ public class MainActivity extends Activity {
             }
         };
 
-        TextView dialogTitle = tv("Set serving · " + item.beerName, 13, COLOR_ACCENT, Typeface.BOLD);
-        dialogTitle.setPadding(dp(18), dp(14), dp(18), dp(8));
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(12), dp(10), dp(12), dp(10));
+
+        TextView pickerTitle = tv("Set serving · " + item.beerName, 13, COLOR_ACCENT, Typeface.BOLD);
+        pickerTitle.setSingleLine(true);
+        pickerTitle.setEllipsize(TextUtils.TruncateAt.END);
+        content.addView(pickerTitle);
+
+        ListView list = new ListView(this);
+        list.setBackgroundColor(0xff1a1816);
+        list.setDivider(new ColorDrawable(0x22ffffff));
+        list.setDividerHeight(dp(1));
+        list.setVerticalScrollBarEnabled(true);
+        list.setFastScrollEnabled(true);
+        list.setAdapter(pickerAdapter);
+        list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        list.setItemChecked(preselect, true);
+
+        LinearLayout.LayoutParams listLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(170)
+        );
+        listLp.topMargin = dp(8);
+        content.addView(list, listLp);
+
+        Button cancelBtn = new Button(this);
+        cancelBtn.setText("Cancel");
+        cancelBtn.setTextColor(0xffe5e7eb);
+        cancelBtn.setBackground(roundRect(0xff2a2724, 999));
+        cancelBtn.setPadding(dp(12), dp(7), dp(12), dp(7));
+        LinearLayout.LayoutParams cancelLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        cancelLp.topMargin = dp(10);
+        content.addView(cancelBtn, cancelLp);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
-            .setCustomTitle(dialogTitle)
-                .setAdapter(pickerAdapter, (d, which) -> patchServing(item.checkinId, optionValues[which]))
-                .setNegativeButton("Cancel", null)
+                .setView(content)
+                .setCancelable(true)
                 .create();
 
-        dialog.show();
+        list.setOnItemClickListener((p, v, which, id) -> {
+            dialog.dismiss();
+            patchServing(item.checkinId, optionValues[which]);
+        });
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
+        dialog.show();
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(roundRect(0xff1a1816, 16));
-        }
-        ListView list = dialog.getListView();
-        if (list != null) {
-            list.setBackgroundColor(0xff1a1816);
-            list.setDivider(new ColorDrawable(0x22ffffff));
-            list.setDividerHeight(dp(1));
-            list.setCacheColorHint(Color.TRANSPARENT);
-        }
-        if (dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE) != null) {
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(COLOR_ACCENT);
-        }
-        if (dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE) != null) {
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(0xffe5e7eb);
         }
     }
 
@@ -671,35 +867,13 @@ public class MainActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(14), dp(10), dp(14), dp(4));
 
-        LinearLayout nameHeader = new LinearLayout(this);
-        nameHeader.setOrientation(LinearLayout.HORIZONTAL);
-        nameHeader.setGravity(Gravity.CENTER_VERTICAL);
-
         TextView nameLabel = tv("Beer name", 11, 0xff9ca3af, Typeface.BOLD);
         LinearLayout.LayoutParams nameLabelLp = new LinearLayout.LayoutParams(
-            0,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            1f
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        nameHeader.addView(nameLabel, nameLabelLp);
-
-        Button voiceBtn = new Button(this);
-        voiceBtn.setText("Voice");
-        voiceBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f);
-        voiceBtn.setMinHeight(0);
-        voiceBtn.setMinimumHeight(0);
-        voiceBtn.setPadding(dp(10), dp(2), dp(10), dp(2));
-        nameHeader.addView(voiceBtn, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ));
-
-        LinearLayout.LayoutParams nameHeaderLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        nameHeaderLp.bottomMargin = dp(4);
-        form.addView(nameHeader, nameHeaderLp);
+        nameLabelLp.bottomMargin = dp(4);
+        form.addView(nameLabel, nameLabelLp);
 
         EditText nameInput = new EditText(this);
         nameInput.setHint("e.g. Test beer");
@@ -715,8 +889,25 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        nameLp.bottomMargin = dp(10);
+        nameLp.bottomMargin = dp(8);
         form.addView(nameInput, nameLp);
+
+        Button voiceBtn = new Button(this);
+        voiceBtn.setText("🎤 Speak beer name");
+        voiceBtn.setAllCaps(false);
+        voiceBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+        voiceBtn.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        voiceBtn.setTextColor(0xff080604);
+        voiceBtn.setBackground(roundRect(COLOR_ACCENT, 999));
+        voiceBtn.setMinHeight(dp(36));
+        voiceBtn.setMinimumHeight(dp(36));
+        voiceBtn.setPadding(dp(14), dp(8), dp(14), dp(8));
+        LinearLayout.LayoutParams voiceLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        voiceLp.bottomMargin = dp(10);
+        form.addView(voiceBtn, voiceLp);
 
         pendingVoiceBeerNameInput = nameInput;
 
@@ -795,45 +986,78 @@ public class MainActivity extends Activity {
         );
         form.addView(volumeList, volumeLp);
 
+        Button addBeerBtn = new Button(this);
+        addBeerBtn.setText("ADD BEER");
+        addBeerBtn.setAllCaps(false);
+        addBeerBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
+        addBeerBtn.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        addBeerBtn.setTextColor(0xff080604);
+        addBeerBtn.setBackground(roundRect(COLOR_ACCENT, 999));
+        addBeerBtn.setMinHeight(dp(40));
+        addBeerBtn.setMinimumHeight(dp(40));
+        addBeerBtn.setPadding(dp(14), dp(8), dp(14), dp(8));
+        LinearLayout.LayoutParams addBeerLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        addBeerLp.topMargin = dp(12);
+        form.addView(addBeerBtn, addBeerLp);
+
+        Button cancelBtn = new Button(this);
+        cancelBtn.setText("Cancel");
+        cancelBtn.setAllCaps(false);
+        cancelBtn.setTextColor(0xffe5e7eb);
+        cancelBtn.setBackground(roundRect(0xff2a2724, 999));
+        cancelBtn.setPadding(dp(12), dp(7), dp(12), dp(7));
+        LinearLayout.LayoutParams cancelLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        cancelLp.topMargin = dp(8);
+        form.addView(cancelBtn, cancelLp);
+
         TextView dialogTitle = tv("Add manual beer", 13, COLOR_ACCENT, Typeface.BOLD);
         dialogTitle.setPadding(dp(18), dp(14), dp(18), dp(8));
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
                 .setCustomTitle(dialogTitle)
                 .setView(form)
-                .setPositiveButton("Add", (d, w) -> {
-                    String beerName = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
-                    if (beerName.isEmpty()) {
-                        Toast.makeText(this, "Beer name required", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    double abv;
-                    try {
-                        abv = Double.parseDouble(String.valueOf(abvInput.getText()).trim());
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Invalid ABV", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    int volumeMl = volumeValues[selectedVolume[0]];
-                    addManualBeer(beerName, abv, volumeMl);
-                    pendingVoiceBeerNameInput = null;
-                })
-                .setNegativeButton("Cancel", (d, w) -> pendingVoiceBeerNameInput = null)
                 .create();
+
+        addBeerBtn.setOnClickListener(v -> {
+            String beerName = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+            if (beerName.isEmpty()) {
+                Toast.makeText(this, "Beer name required", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            double abv;
+            try {
+                abv = Double.parseDouble(String.valueOf(abvInput.getText()).trim());
+            } catch (Exception e) {
+                Toast.makeText(this, "Invalid ABV", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int volumeMl = volumeValues[selectedVolume[0]];
+            addManualBeer(beerName, abv, volumeMl);
+            pendingVoiceBeerNameInput = null;
+            dialog.dismiss();
+        });
+        cancelBtn.setOnClickListener(v -> {
+            pendingVoiceBeerNameInput = null;
+            dialog.dismiss();
+        });
 
         dialog.show();
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(roundRect(0xff1a1816, 16));
         }
-        if (dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE) != null) {
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(COLOR_ACCENT);
-        }
-        if (dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE) != null) {
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(0xffe5e7eb);
-        }
     }
 
     private void addManualBeer(String beerName, double abv, int volumeMl) {
+        addManualBeer(beerName, abv, volumeMl, false);
+    }
+
+    private void addManualBeer(String beerName, double abv, int volumeMl, boolean repeat) {
         if (deviceToken == null) return;
         executor.execute(() -> {
             try {
@@ -850,6 +1074,7 @@ public class MainActivity extends Activity {
                 body.put("abv", abv);
                 body.put("volumeMl", volumeMl);
                 body.put("createdAtMs", System.currentTimeMillis());
+                body.put("repeat", repeat);
 
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(body.toString().getBytes("UTF-8"));
@@ -1183,8 +1408,10 @@ public class MainActivity extends Activity {
 
         beerListView.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
             if (position >= 0 && position < beerListItems.size()) {
-            selectedBeerIndex = position;
-            refreshBeerListUi();
+                selectedBeerIndex = position;
+                refreshBeerListUi();
+                hideBeerListOverlay();
+                showBeerDetailsWindow(beerListItems.get(position));
             }
         });
 
@@ -1195,17 +1422,20 @@ public class MainActivity extends Activity {
         actionRow.setWeightSum(3f);
 
         Button addManualBtn = new Button(this);
-        addManualBtn.setText("+ Add manual");
-        addManualBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f);
-        addManualBtn.setMinHeight(0);
-        addManualBtn.setMinimumHeight(0);
-        addManualBtn.setPadding(dp(10), dp(4), dp(10), dp(4));
+        addManualBtn.setText("ADD BEER");
+        addManualBtn.setAllCaps(false);
+        addManualBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+        addManualBtn.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        addManualBtn.setTextColor(0xff080604);
+        addManualBtn.setBackground(roundRect(COLOR_ACCENT, 999));
+        addManualBtn.setMinHeight(dp(36));
+        addManualBtn.setMinimumHeight(dp(36));
+        addManualBtn.setPadding(dp(12), dp(8), dp(12), dp(8));
         addManualBtn.setOnClickListener(v -> addManualBeerDialog());
         LinearLayout.LayoutParams addBtnLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        addBtnLp.gravity = Gravity.CENTER_HORIZONTAL;
         addBtnLp.topMargin = dp(8);
         beerModalCard.addView(addManualBtn, addBtnLp);
 
