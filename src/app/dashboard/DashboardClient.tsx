@@ -270,7 +270,7 @@ function DrinkList({
         </h2>
         <button
           onClick={openForm}
-          className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-lg leading-none transition-colors"
+          className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-[20px] leading-none transition-colors"
           aria-label="Add manual beer"
         >
           +
@@ -379,7 +379,7 @@ function DrinkList({
                       </div>
                       <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                            <span className="text-[#ffd166] font-mono text-[13.5px] inline-flex items-center h-5 leading-none">{c.abv.toFixed(1)}%</span>
                           <button
                             onClick={() => {
                               setDraft({
@@ -458,7 +458,7 @@ function DrinkList({
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                        <span className="text-[#ffd166] font-mono text-[13.5px] inline-flex items-center h-5 leading-none">{c.abv.toFixed(1)}%</span>
                         <button
                           onClick={() => {
                             setDraft({
@@ -940,7 +940,7 @@ export default function DashboardClient({
       />
 
       {/* Footer attribution */}
-      <p className="text-[#374151] text-xs pb-1">Created by craftbeers.app</p>
+      <p className="text-[#6b7280] text-xs pb-1">Created by craftbeers.app</p>
     </main>
   );
 }
