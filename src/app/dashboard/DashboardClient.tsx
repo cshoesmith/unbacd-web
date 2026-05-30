@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { bacLabel, bacColor, formatDuration, resolveServingMl } from '@/lib/bac';
+import { bacLabel, bacColor, formatDuration, resolveServingMl, calculateBac } from '@/lib/bac';
 import type { CachedCheckin } from '@/lib/kv';
 
 interface Props {
@@ -143,6 +143,16 @@ function BacWarning({ bac }: { bac: number | null }) {
 
 const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs: '' };
 
+// Map BAC to border color gradient: green -> yellow -> red
+function bacToBorderColor(bac: number): string {
+  if (bac < 0.02)  return '#22c55e';  // green - sober
+  if (bac < 0.04)  return '#84cc16';  // lime - trace
+  if (bac < 0.06)  return '#eab308';  // yellow - tipsy start
+  if (bac < 0.10)  return '#f59e0b';  // amber - caution
+  if (bac < 0.15)  return '#ff6b35';  // orange - over limit
+  return '#ef4444';                   // red - danger
+}
+
 function RepeatIcon() {
   return (
     <svg viewBox="0 0 24 16" width="29" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -160,6 +170,8 @@ function DrinkList({
   onPhantomAdd,
   onPhantomRemove,
   defaultServingMl,
+  weightKg,
+  gender,
   now,
 }: {
   checkins: CachedCheckin[];
@@ -168,6 +180,8 @@ function DrinkList({
   onPhantomAdd: (data: { beerName: string; abv: number; volumeMl: number; createdAtMs: number; repeat?: boolean }) => Promise<void>;
   onPhantomRemove: (checkinId: number) => Promise<void>;
   defaultServingMl: number | null;
+  weightKg: number;
+  gender: 'male' | 'female';
   now: number;
 }) {
   const [showForm, setShowForm]   = useState(false);
@@ -178,6 +192,13 @@ function DrinkList({
 
   const cutoff = now - 24 * 60 * 60_000;
   const recent = checkins.filter(c => c.createdAtMs >= cutoff).sort((a, b) => b.createdAtMs - a.createdAtMs);
+
+  // Helper to get BAC at the time a specific beer was consumed
+  const getBacAtTime = useCallback((targetCheckin: CachedCheckin) => {
+    const beersUpToTarget = checkins.filter(c => c.createdAtMs <= targetCheckin.createdAtMs);
+    const result = calculateBac(beersUpToTarget, weightKg, gender, defaultServingMl ?? undefined, targetCheckin.createdAtMs);
+    return result.bac;
+  }, [checkins, weightKg, gender, defaultServingMl]);
 
   const openForm = () => {
     setDraft({ ...PHANTOM_DEFAULT, createdAtMs: toDatetimeLocal(Date.now()) });
@@ -288,10 +309,13 @@ function DrinkList({
             const pending = pendingIds.has(c.checkinId ?? -1);
 
             if (c.phantom) {
+              const bacAtTime = getBacAtTime(c);
+              const borderColor = bacToBorderColor(bacAtTime);
               return (
                 <div
                   key={c.checkinId ?? i}
                   className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
+                  style={{ border: `2px solid ${borderColor}` }}
                 >
                   {/* Top row: beer info + ABV + time + repeat */}
                   <div className="flex items-start justify-between gap-2">
@@ -367,6 +391,7 @@ function DrinkList({
               <div
                 key={c.checkinId ?? i}
                 className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
+                style={{ border: `2px solid ${bacToBorderColor(getBacAtTime(c))}` }}
               >
                 {/* Top row: beer info + ABV + time + repeat */}
                 <div className="flex items-start justify-between gap-2">
@@ -816,6 +841,8 @@ export default function DashboardClient({
         onPhantomAdd={addPhantom}
         onPhantomRemove={removePhantom}
         defaultServingMl={defaultServingMl}
+        weightKg={weightKg}
+        gender={gender}
         now={now}
       />
 
