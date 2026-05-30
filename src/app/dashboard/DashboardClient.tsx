@@ -291,8 +291,9 @@ function DrinkList({
               return (
                 <div
                   key={c.checkinId ?? i}
-                  className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1"
+                  className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
                 >
+                  {/* Top row: beer info + ABV + time + repeat */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -300,40 +301,63 @@ function DrinkList({
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
                         {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
                       </div>
-                      <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
                     </div>
-                    <div className="flex items-start gap-2 flex-shrink-0">
-                      <div className="flex flex-col items-end gap-0.5">
+                    <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                        <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                        <button
+                          onClick={() => {
+                            setDraft({
+                              beerName: c.beerName,
+                              abv: c.abv.toString(),
+                              volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
+                              createdAtMs: toDatetimeLocal(Date.now()),
+                            });
+                            setIsRepeat(true);
+                            setShowForm(true);
+                          }}
+                          disabled={pending}
+                          className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity"
+                          aria-label="Re-add as manual"
+                        >
+                          <RepeatIcon />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          setDraft({
-                            beerName: c.beerName,
-                            abv: c.abv.toString(),
-                            volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
-                            createdAtMs: toDatetimeLocal(Date.now()),
-                          });
-                          setIsRepeat(true);
-                          setShowForm(true);
-                        }}
-                        disabled={pending}
-                        className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
-                        aria-label="Re-add as manual"
-                      >
-                        <RepeatIcon />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmId(c.checkinId)}
-                        disabled={pending}
-                        className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-xl leading-none mt-0.5"
-                        aria-label="Delete manual beer"
-                      >
-                        ×
-                      </button>
+                      <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
                     </div>
                   </div>
+                  {/* Serving size selector */}
+                  <select
+                    disabled={pending}
+                    value={c.volumeMlOverride ?? ''}
+                    onChange={e => {
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      onServingChange(c.checkinId!, val);
+                    }}
+                    className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
+                    style={{ colorScheme: 'dark' }}
+                  >
+                    {SERVING_OPTIONS.map(opt => (
+                      <option
+                        key={opt.ml ?? 'auto'}
+                        value={opt.ml ?? ''}
+                        style={{ backgroundColor: '#1a1816' }}
+                      >
+                        {opt.ml === null
+                          ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
+                          : opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Delete button row */}
+                  <button
+                    onClick={() => setDeleteConfirmId(c.checkinId)}
+                    disabled={pending}
+                    className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium py-2 text-left"
+                    aria-label="Delete manual beer"
+                  >
+                    Delete
+                  </button>
                 </div>
               );
             }
