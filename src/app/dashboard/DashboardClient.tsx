@@ -210,16 +210,16 @@ function DrinkList({
         <button
           onClick={openForm}
           className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-lg leading-none transition-colors"
-          aria-label="Add phantom beer"
+          aria-label="Add manual beer"
         >
           +
         </button>
       </div>
 
-      {/* Phantom add form */}
+      {/* Manual beer add form */}
       {showForm && (
         <div className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/20 rounded-xl px-4 py-3 gap-3 mb-2">
-          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add phantom beer</p>
+          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add manual beer</p>
 
           <input
             type="text"
@@ -326,38 +326,39 @@ function DrinkList({
                       <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
                     </div>
                   </div>
-                  {/* Serving size selector */}
-                  <select
-                    disabled={pending}
-                    value={c.volumeMlOverride ?? ''}
-                    onChange={e => {
-                      const val = e.target.value === '' ? null : Number(e.target.value);
-                      onServingChange(c.checkinId!, val);
-                    }}
-                    className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
-                    style={{ colorScheme: 'dark' }}
-                  >
-                    {SERVING_OPTIONS.map(opt => (
-                      <option
-                        key={opt.ml ?? 'auto'}
-                        value={opt.ml ?? ''}
-                        style={{ backgroundColor: '#1a1816' }}
-                      >
-                        {opt.ml === null
-                          ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
-                          : opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {/* Delete button row */}
-                  <button
-                    onClick={() => setDeleteConfirmId(c.checkinId)}
-                    disabled={pending}
-                    className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium py-2 text-left"
-                    aria-label="Delete manual beer"
-                  >
-                    Delete
-                  </button>
+                  {/* Serving size selector + delete button */}
+                  <div className="flex items-center gap-2">
+                    <select
+                      disabled={pending}
+                      value={c.volumeMlOverride ?? ''}
+                      onChange={e => {
+                        const val = e.target.value === '' ? null : Number(e.target.value);
+                        onServingChange(c.checkinId!, val);
+                      }}
+                      className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
+                      style={{ colorScheme: 'dark', width: '140px' }}
+                    >
+                      {SERVING_OPTIONS.map(opt => (
+                        <option
+                          key={opt.ml ?? 'auto'}
+                          value={opt.ml ?? ''}
+                          style={{ backgroundColor: '#1a1816' }}
+                        >
+                          {opt.ml === null
+                            ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
+                            : opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setDeleteConfirmId(c.checkinId)}
+                      disabled={pending}
+                      className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium ml-auto flex-shrink-0"
+                      aria-label="Delete manual beer"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             }
@@ -388,7 +389,7 @@ function DrinkList({
                         }}
                         disabled={pending}
                         className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity"
-                        aria-label="Re-add as phantom"
+                        aria-label="Re-add as manual"
                       >
                         <RepeatIcon />
                       </button>
@@ -404,8 +405,8 @@ function DrinkList({
                     const val = e.target.value === '' ? null : Number(e.target.value);
                     onServingChange(c.checkinId!, val);
                   }}
-                  className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer"
-                  style={{ colorScheme: 'dark' }}
+                  className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
+                  style={{ colorScheme: 'dark', width: '140px' }}
                 >
                   {SERVING_OPTIONS.map(opt => (
                     <option
