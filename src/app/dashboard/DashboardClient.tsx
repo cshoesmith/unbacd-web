@@ -351,24 +351,110 @@ function DrinkList({
         ) : (
           recent.map((c, i) => {
             const pending = pendingIds.has(c.checkinId ?? -1);
+            const next = recent[i + 1];
+            const gapHours = next ? (c.createdAtMs - next.createdAtMs) / 3_600_000 : 0;
+            const hasGapTile = gapHours > 4;
+            const gapHoursRounded = Math.round(gapHours * 10) / 10;
+            const gapHoursLabel = Number.isInteger(gapHoursRounded)
+              ? gapHoursRounded.toFixed(0)
+              : gapHoursRounded.toFixed(1);
 
             if (c.phantom) {
               const bacAtTime = getBacAtTime(c);
               const borderColor = bacToBorderColor(bacAtTime);
               return (
+                <div key={c.checkinId ?? i} className="flex flex-col gap-2">
+                  <div
+                    className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
+                    style={{ border: `2px solid ${borderColor}` }}
+                  >
+                    {/* Top row: beer info + ABV + time + repeat */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
+                          {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                          <button
+                            onClick={() => {
+                              setDraft({
+                                beerName: c.beerName,
+                                abv: c.abv.toString(),
+                                volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
+                                createdAtMs: toDatetimeLocal(Date.now()),
+                              });
+                              setIsRepeat(true);
+                              setShowForm(true);
+                            }}
+                            disabled={pending}
+                            className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity"
+                            aria-label="Re-add as manual"
+                          >
+                            <RepeatIcon />
+                          </button>
+                        </div>
+                        <span className="text-xs text-[#9ca3af]">{timeSince(c.createdAtMs, now)}</span>
+                      </div>
+                    </div>
+                    {/* Serving size selector + delete button */}
+                    <div className="flex items-center gap-2">
+                      <select
+                        disabled={pending}
+                        value={c.volumeMlOverride ?? ''}
+                        onChange={e => {
+                          const val = e.target.value === '' ? null : Number(e.target.value);
+                          onServingChange(c.checkinId!, val);
+                        }}
+                        className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
+                        style={{ colorScheme: 'dark', width: '140px' }}
+                      >
+                        {SERVING_OPTIONS.map(opt => (
+                          <option
+                            key={opt.ml ?? 'auto'}
+                            value={opt.ml ?? ''}
+                            style={{ backgroundColor: '#1a1816' }}
+                          >
+                            {opt.ml === null
+                              ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
+                              : opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setDeleteConfirmId(c.checkinId)}
+                        disabled={pending}
+                        className="text-[#9ca3af] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium ml-auto flex-shrink-0"
+                        aria-label="Delete manual beer"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {hasGapTile && (
+                    <div className="border border-white/35 rounded-lg px-3 py-1 text-center text-xs text-[#e5e7eb] bg-white/[0.03]">
+                      {gapHoursLabel} hours between beers
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div key={c.checkinId ?? i} className="flex flex-col gap-2">
                 <div
-                  key={c.checkinId ?? i}
                   className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
-                  style={{ border: `2px solid ${borderColor}` }}
+                  style={{ border: `2px solid ${bacToBorderColor(getBacAtTime(c))}` }}
                 >
                   {/* Top row: beer info + ABV + time + repeat */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
-                        {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
-                      </div>
+                      <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                      <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
                       <div className="flex items-center gap-2">
@@ -378,10 +464,9 @@ function DrinkList({
                             setDraft({
                               beerName: c.beerName,
                               abv: c.abv.toString(),
-                              volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
+                              volumeMl: String(resolveServingMl(c.servingType, c.volumeMlOverride, defaultServingMl ?? undefined)),
                               createdAtMs: toDatetimeLocal(Date.now()),
                             });
-                            setIsRepeat(true);
                             setShowForm(true);
                           }}
                           disabled={pending}
@@ -394,101 +479,35 @@ function DrinkList({
                       <span className="text-xs text-[#9ca3af]">{timeSince(c.createdAtMs, now)}</span>
                     </div>
                   </div>
-                  {/* Serving size selector + delete button */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      disabled={pending}
-                      value={c.volumeMlOverride ?? ''}
-                      onChange={e => {
-                        const val = e.target.value === '' ? null : Number(e.target.value);
-                        onServingChange(c.checkinId!, val);
-                      }}
-                      className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
-                      style={{ colorScheme: 'dark', width: '140px' }}
-                    >
-                      {SERVING_OPTIONS.map(opt => (
-                        <option
-                          key={opt.ml ?? 'auto'}
-                          value={opt.ml ?? ''}
-                          style={{ backgroundColor: '#1a1816' }}
-                        >
-                          {opt.ml === null
-                            ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
-                            : opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => setDeleteConfirmId(c.checkinId)}
-                      disabled={pending}
-                      className="text-[#9ca3af] hover:text-red-400 disabled:opacity-40 transition-colors text-sm font-medium ml-auto flex-shrink-0"
-                      aria-label="Delete manual beer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={c.checkinId ?? i}
-                className="flex flex-col bg-white/5 rounded-xl px-4 py-3 gap-2"
-                style={{ border: `2px solid ${bacToBorderColor(getBacAtTime(c))}` }}
-              >
-                {/* Top row: beer info + ABV + time + repeat */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-                    <span className="text-xs text-[#6b7280] truncate">{c.breweryName}</span>
-                  </div>
-                  <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                      <button
-                        onClick={() => {
-                          setDraft({
-                            beerName: c.beerName,
-                            abv: c.abv.toString(),
-                            volumeMl: String(resolveServingMl(c.servingType, c.volumeMlOverride, defaultServingMl ?? undefined)),
-                            createdAtMs: toDatetimeLocal(Date.now()),
-                          });
-                          setShowForm(true);
-                        }}
-                        disabled={pending}
-                        className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity"
-                        aria-label="Re-add as manual"
+                  {/* Serving size selector */}
+                  <select
+                    disabled={pending}
+                    value={c.volumeMlOverride ?? ''}
+                    onChange={e => {
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      onServingChange(c.checkinId!, val);
+                    }}
+                    className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
+                    style={{ colorScheme: 'dark', width: '140px' }}
+                  >
+                    {SERVING_OPTIONS.map(opt => (
+                      <option
+                        key={opt.ml ?? 'auto'}
+                        value={opt.ml ?? ''}
+                        style={{ backgroundColor: '#1a1816' }}
                       >
-                        <RepeatIcon />
-                      </button>
-                    </div>
-                    <span className="text-xs text-[#9ca3af]">{timeSince(c.createdAtMs, now)}</span>
-                  </div>
+                        {opt.ml === null
+                          ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
+                          : opt.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                {/* Serving size selector */}
-                <select
-                  disabled={pending}
-                  value={c.volumeMlOverride ?? ''}
-                  onChange={e => {
-                    const val = e.target.value === '' ? null : Number(e.target.value);
-                    onServingChange(c.checkinId!, val);
-                  }}
-                  className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[#9ca3af] disabled:opacity-40 focus:outline-none focus:border-[#ffd166]/40 cursor-pointer flex-shrink-0"
-                  style={{ colorScheme: 'dark', width: '140px' }}
-                >
-                  {SERVING_OPTIONS.map(opt => (
-                    <option
-                      key={opt.ml ?? 'auto'}
-                      value={opt.ml ?? ''}
-                      style={{ backgroundColor: '#1a1816' }}
-                    >
-                      {opt.ml === null
-                        ? `${resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)} ml`
-                        : opt.label}
-                    </option>
-                  ))}
-                </select>
+                {hasGapTile && (
+                  <div className="border border-white/35 rounded-lg px-3 py-1 text-center text-xs text-[#e5e7eb] bg-white/[0.03]">
+                    {gapHoursLabel} hours between beers
+                  </div>
+                )}
               </div>
             );
           })
