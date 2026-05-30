@@ -685,7 +685,14 @@ export default function DashboardClient({
     : 'Not yet synced';
 
   return (
-    <main className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden" style={{ height: '100dvh', backgroundColor: '#080604' }}>
+    <main
+      className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden"
+      style={{
+        height: '100dvh',
+        backgroundColor: '#080604',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+      }}
+    >
 
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between">
