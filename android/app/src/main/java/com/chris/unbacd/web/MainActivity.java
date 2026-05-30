@@ -587,13 +587,8 @@ public class MainActivity extends Activity {
         );
         topRow.addView(topSpacer, spacerLp);
 
-        Button closeTopBtn = new Button(this);
-        closeTopBtn.setText("Close");
-        closeTopBtn.setAllCaps(false);
-        closeTopBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
-        closeTopBtn.setTextColor(0xffe5e7eb);
-        closeTopBtn.setBackground(roundRect(0xff272522, 999));
-        closeTopBtn.setPadding(dp(12), dp(5), dp(12), dp(5));
+        TextView closeTopBtn = tv("close", 10, 0xff9ca3af, Typeface.NORMAL);
+        closeTopBtn.setPadding(0, 0, 0, 0);
         topRow.addView(closeTopBtn, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1013,11 +1008,12 @@ public class MainActivity extends Activity {
         addBeerBtn.setBackground(roundRect(COLOR_ACCENT, 999));
         addBeerBtn.setMinHeight(dp(40));
         addBeerBtn.setMinimumHeight(dp(40));
-        addBeerBtn.setPadding(dp(14), dp(8), dp(14), dp(8));
+        addBeerBtn.setPadding(dp(18), dp(8), dp(18), dp(8));
         LinearLayout.LayoutParams addBeerLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
+        addBeerLp.gravity = Gravity.CENTER_HORIZONTAL;
         addBeerLp.topMargin = dp(12);
         form.addView(addBeerBtn, addBeerLp);
 
@@ -1448,12 +1444,13 @@ public class MainActivity extends Activity {
         addManualBtn.setBackground(roundRect(COLOR_ACCENT, 999));
         addManualBtn.setMinHeight(dp(36));
         addManualBtn.setMinimumHeight(dp(36));
-        addManualBtn.setPadding(dp(12), dp(8), dp(12), dp(8));
+        addManualBtn.setPadding(dp(18), dp(8), dp(18), dp(8));
         addManualBtn.setOnClickListener(v -> addManualBeerDialog());
         LinearLayout.LayoutParams addBtnLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
+        addBtnLp.gravity = Gravity.CENTER_HORIZONTAL;
         addBtnLp.topMargin = dp(8);
         beerModalCard.addView(addManualBtn, addBtnLp);
 
@@ -1578,6 +1575,7 @@ public class MainActivity extends Activity {
         LinearLayout splashCol = new LinearLayout(this);
         splashCol.setOrientation(LinearLayout.VERTICAL);
         splashCol.setGravity(Gravity.CENTER);
+        splashCol.setPadding(0, 0, 0, dp(22));
 
         android.widget.ImageView splashIcon = new android.widget.ImageView(this);
         splashIcon.setImageResource(R.mipmap.ic_launcher_foreground);
@@ -1592,22 +1590,27 @@ public class MainActivity extends Activity {
         splashTitle.setLetterSpacing(0.12f);
         splashCol.addView(splashTitle, centredLp(0));
 
-        TextView splashBy = tv("by craftbeers.app", 13, 0xff6b7280, Typeface.NORMAL);
-        splashBy.setGravity(Gravity.CENTER);
-        splashCol.addView(splashBy, centredLp(dp(5)));
+        android.widget.ImageView splashLogo = new android.widget.ImageView(this);
+        splashLogo.setImageResource(R.drawable.pbu_yellow);
+        splashLogo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams splashLogoInlineLp = new LinearLayout.LayoutParams(
+            dp(120), dp(28));
+        splashLogoInlineLp.gravity = Gravity.CENTER_HORIZONTAL;
+        splashLogoInlineLp.topMargin = dp(3);
+        splashCol.addView(splashLogo, splashLogoInlineLp);
 
         splashOverlay.addView(splashCol, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // PBU logo — pinned to bottom of splash
-        android.widget.ImageView splashLogo = new android.widget.ImageView(this);
-        splashLogo.setImageResource(R.drawable.pbu_yellow);
-        splashLogo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-        FrameLayout.LayoutParams splashLogoLp = new FrameLayout.LayoutParams(
-                dp(100), dp(24), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        splashLogoLp.bottomMargin = dp(18);
-        splashOverlay.addView(splashLogo, splashLogoLp);
+        TextView splashFooter = tv("Created by craftbeers.app", 13, 0xff6b7280, Typeface.NORMAL);
+        splashFooter.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams splashFooterLp = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        splashFooterLp.bottomMargin = dp(24);
+        splashOverlay.addView(splashFooter, splashFooterLp);
 
         root.addView(splashOverlay, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
