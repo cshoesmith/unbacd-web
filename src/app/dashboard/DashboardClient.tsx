@@ -761,7 +761,7 @@ export default function DashboardClient({
           />
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="text-[#6b7280] text-xs hover:text-[#9ca3af] transition-colors cursor-pointer"
+            className="text-[#9ca3af] text-xs hover:text-white transition-colors cursor-pointer"
           >
             @{username}
           </button>
