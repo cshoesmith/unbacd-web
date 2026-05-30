@@ -684,7 +684,7 @@ export default function DashboardClient({
     : 'Not yet synced';
 
   return (
-    <main className="min-h-screen bg-[#080604] flex flex-col items-center px-4 py-4 gap-4">
+    <main className="flex flex-col items-center px-4 py-4 gap-4 overflow-y-auto overflow-x-hidden pb-20" style={{ height: '100dvh', backgroundColor: '#080604' }}>
 
       {/* Header */}
       <div className="w-full max-w-sm flex items-center justify-between">
