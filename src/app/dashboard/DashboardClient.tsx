@@ -174,8 +174,7 @@ function DrinkList({
   const [draft, setDraft]         = useState(PHANTOM_DEFAULT);
   const [submitting, setSubmitting] = useState(false);
   const [isRepeat, setIsRepeat]   = useState(false);
-  const [swipedId, setSwipedId]   = useState<number | null>(null);
-  const [touchStart, setTouchStart] = useState(0);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const cutoff = now - 24 * 60 * 60_000;
   const recent = checkins.filter(c => c.createdAtMs >= cutoff).sort((a, b) => b.createdAtMs - a.createdAtMs);
@@ -289,84 +288,53 @@ function DrinkList({
             const pending = pendingIds.has(c.checkinId ?? -1);
 
             if (c.phantom) {
-              const isSlid = swipedId === c.checkinId;
-              
               return (
                 <div
                   key={c.checkinId ?? i}
-                  className="relative overflow-hidden rounded-xl"
+                  className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1"
                 >
-                  {/* Delete button background */}
-                  {isSlid && (
-                    <div className="absolute right-0 top-0 bottom-0 bg-red-500/80 w-16 flex items-center justify-center z-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
+                        {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
+                      </div>
+                      <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
+                    </div>
+                    <div className="flex items-start gap-2 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
+                        <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
+                      </div>
                       <button
                         onClick={() => {
-                          onPhantomRemove(c.checkinId!);
-                          setSwipedId(null);
+                          setDraft({
+                            beerName: c.beerName,
+                            abv: c.abv.toString(),
+                            volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
+                            createdAtMs: toDatetimeLocal(Date.now()),
+                          });
+                          setIsRepeat(true);
+                          setShowForm(true);
                         }}
                         disabled={pending}
-                        className="text-white font-bold text-sm disabled:opacity-40"
-                        aria-label="Confirm delete"
+                        className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
+                        aria-label="Re-add as manual"
                       >
-                        Delete
+                        <RepeatIcon />
                       </button>
-                    </div>
-                  )}
-                  
-                  {/* Main content */}
-                  <div
-                    className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1 transition-transform z-10 relative cursor-pointer select-none"
-                    style={{
-                      transform: isSlid ? 'translateX(-64px)' : 'translateX(0)',
-                      transitionDuration: '200ms',
-                    }}
-                    onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
-                    onTouchEnd={(e) => {
-                      const touchEnd = e.changedTouches[0].clientX;
-                      const diff = touchStart - touchEnd;
-                      if (diff > 50) {
-                        setSwipedId(c.checkinId);
-                      } else if (diff < -50) {
-                        setSwipedId(null);
-                      }
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
-                          {c.repeat && <span className="text-xs font-bold text-[#ffd166]">Ⓡ</span>}
-                        </div>
-                        <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
-                      </div>
-                      <div className="flex items-start gap-2 flex-shrink-0">
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="text-xs text-[#ffd166] font-mono">{c.abv.toFixed(1)}%</span>
-                          <span className="text-xs text-[#4b5563]">{timeSince(c.createdAtMs, now)}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setDraft({
-                              beerName: c.beerName,
-                              abv: c.abv.toString(),
-                              volumeMl: String(c.volumeMlOverride ?? resolveServingMl(c.servingType, undefined, defaultServingMl ?? undefined)),
-                              createdAtMs: toDatetimeLocal(Date.now()),
-                            });
-                            setIsRepeat(true);
-                            setShowForm(true);
-                          }}
-                          disabled={pending}
-                          className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
-                          aria-label="Re-add as manual"
-                        >
-                          <RepeatIcon />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setDeleteConfirmId(c.checkinId)}
+                        disabled={pending}
+                        className="text-[#4b5563] hover:text-red-400 disabled:opacity-40 transition-colors text-xl leading-none mt-0.5"
+                        aria-label="Delete manual beer"
+                      >
+                        ×
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
               );
 
             return (
@@ -429,6 +397,32 @@ function DrinkList({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-[#1a1816] rounded-t-2xl px-4 py-4 gap-3 flex flex-col">
+            <p className="text-white font-semibold">Delete this beer?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-3 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onPhantomRemove(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
