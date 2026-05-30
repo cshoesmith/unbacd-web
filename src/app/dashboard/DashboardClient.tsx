@@ -68,8 +68,22 @@ function BacCircle({
         transition: flashing ? 'none' : 'background-color 0.6s ease',
       }}
     >
+      {/* Subtle embossed watermark */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+        <span
+          className="text-[11px] font-semibold tracking-[0.18em] uppercase whitespace-nowrap"
+          style={{
+            color: 'rgba(255,255,255,0.10)',
+            textShadow: '0 1px 1px rgba(255,255,255,0.12), 0 -1px 1px rgba(0,0,0,0.35)',
+            transform: 'translateY(14px)',
+          }}
+        >
+          Powered by Untappd
+        </span>
+      </div>
+
       {/* BAC number + unit labels */}
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-1 relative z-10">
         <div className="flex items-center gap-1.5">
           <span
             className="font-black tabular-nums"
@@ -95,14 +109,14 @@ function BacCircle({
       </div>
 
       {/* Last sync at top of circle */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
         <p className="text-[11px] font-medium whitespace-nowrap" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
           {lastSyncText}
         </p>
       </div>
 
       {/* Compact status block inside circle */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 leading-tight">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 leading-tight z-10">
         {soberText && (
           <p className="text-[11px] font-medium whitespace-nowrap" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
             {soberText}
