@@ -756,7 +756,7 @@ export default function DashboardClient({
           <img
             src={pbu80Yellow.src}
             alt="Powered by Untappd"
-            className="w-28 h-auto"
+            className="w-[123px] h-auto"
             style={{ filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.15)) drop-shadow(0 -1px 2px rgba(0,0,0,0.45))' }}
           />
           <button
