@@ -145,7 +145,7 @@ const PHANTOM_DEFAULT = { beerName: '', abv: '5.0', volumeMl: '375', createdAtMs
 
 function RepeatIcon() {
   return (
-    <svg viewBox="0 0 24 16" width="22" height="15" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 24 16" width="29" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="1" y="1" width="22" height="14" rx="7" stroke="#ffd166" strokeWidth="1.8"/>
       <path d="M9 8 Q9 5 12 5 Q15 5 15 8 Q15 11 12 11 L9.5 11" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
       <path d="M11 9.6 L9.5 11 L11 12.4" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
@@ -175,7 +175,7 @@ function DrinkList({
   const [submitting, setSubmitting] = useState(false);
 
   const cutoff = now - 24 * 60 * 60_000;
-  const recent = checkins.filter(c => c.createdAtMs >= cutoff);
+  const recent = checkins.filter(c => c.createdAtMs >= cutoff).sort((a, b) => b.createdAtMs - a.createdAtMs);
 
   const openForm = () => {
     setDraft({ ...PHANTOM_DEFAULT, createdAtMs: toDatetimeLocal(Date.now()) });
@@ -294,7 +294,7 @@ function DrinkList({
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium text-white truncate">{c.beerName}</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">phantom</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffd166]/15 text-[#ffd166] uppercase tracking-wide flex-shrink-0">Manual</span>
                       </div>
                       <span className="text-xs text-[#6b7280]">{c.volumeMlOverride} ml</span>
                     </div>
@@ -315,7 +315,7 @@ function DrinkList({
                         }}
                         disabled={pending}
                         className="opacity-70 hover:opacity-100 disabled:opacity-30 transition-opacity mt-0.5"
-                        aria-label="Re-add as phantom"
+                        aria-label="Re-add as manual"
                       >
                         <RepeatIcon />
                       </button>
@@ -466,7 +466,7 @@ export default function DashboardClient({
     setSyncing(true);
     setSyncError(null);
     try {
-      const res = await fetch('/api/sync', { method: 'POST' });
+      const res = await fetch('/api/sync', { method: 'POST', credentials: 'include' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setSyncError((body as any).error ?? 'Sync failed');
@@ -504,6 +504,7 @@ export default function DashboardClient({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ volumeMl }),
+        credentials: 'include',
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -524,6 +525,7 @@ export default function DashboardClient({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     if (!res.ok) return;
     const result = await res.json();
@@ -537,7 +539,7 @@ export default function DashboardClient({
   const removePhantom = useCallback(async (checkinId: number) => {
     setPendingCheckinIds(s => { const n = new Set(s); n.add(checkinId); return n; });
     try {
-      const res = await fetch(`/api/checkins/${checkinId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/checkins/${checkinId}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) return;
       const result = await res.json();
       setBac(result.bac);
@@ -561,6 +563,7 @@ export default function DashboardClient({
           gender:          settingsDraft.gender,
           defaultServingMl: settingsDraft.defaultServingMl,
         }),
+        credentials: 'include',
       });
       if (!res.ok) return;
       const data: SettingsResult = await res.json();
@@ -587,7 +590,7 @@ export default function DashboardClient({
   const requestPin = async () => {
     setPairLoading(true);
     try {
-      const res = await fetch('/api/pair', { method: 'POST' });
+      const res = await fetch('/api/pair', { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (data.pin) setPin(data.pin);
     } finally {
