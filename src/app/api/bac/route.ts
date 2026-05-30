@@ -54,9 +54,14 @@ export async function GET(req: NextRequest) {
       calculatedAt: result.calculatedAt,
       username:     user.username,
       checkins:     cached.checkins.map(c => ({
+        checkinId: c.checkinId,
         beerName: c.beerName,
+        breweryName: c.breweryName,
         abv: c.abv,
+        servingType: c.servingType,
+        volumeMlOverride: c.volumeMlOverride,
         createdAtMs: c.createdAtMs,
+        phantom: c.phantom === true,
       })),
       fromCache:    true,
     });
@@ -88,6 +93,7 @@ export async function GET(req: NextRequest) {
         servingType:      c.servingType,
         createdAtMs:      parseUntappdDate(c.createdAt),
         volumeMlOverride: overrideMap.get(c.checkinId),
+        phantom:          undefined as true | undefined,
       }));
 
     const allCheckins = [...freshCheckins, ...phantoms];
@@ -114,9 +120,14 @@ export async function GET(req: NextRequest) {
       calculatedAt: result.calculatedAt,
       username:     user.username,
       checkins:     allCheckins.map(c => ({
+        checkinId: c.checkinId,
         beerName: c.beerName,
+        breweryName: c.breweryName,
         abv: c.abv,
+        servingType: c.servingType,
+        volumeMlOverride: c.volumeMlOverride,
         createdAtMs: c.createdAtMs,
+        phantom: c.phantom === true,
       })),
       fromCache:    false,
     });
@@ -141,9 +152,14 @@ export async function GET(req: NextRequest) {
         calculatedAt: result.calculatedAt,
         username:     user.username,
         checkins:     cached.checkins.map(c => ({
+          checkinId: c.checkinId,
           beerName: c.beerName,
+          breweryName: c.breweryName,
           abv: c.abv,
+          servingType: c.servingType,
+          volumeMlOverride: c.volumeMlOverride,
           createdAtMs: c.createdAtMs,
+          phantom: c.phantom === true,
         })),
         fromCache:    true,
         stale:        true,

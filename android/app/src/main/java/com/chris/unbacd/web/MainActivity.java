@@ -16,11 +16,13 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,6 +35,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -76,7 +80,19 @@ public class MainActivity extends Activity {
     private boolean pollInFlight     = false;
     private boolean pairingInFlight  = false;
     private String  deviceToken      = null;
-    private final List<String> beerListItems = new ArrayList<>();
+    private final List<WatchBeerItem> beerListItems = new ArrayList<>();
+    private int selectedBeerIndex = -1;
+
+    private static class WatchBeerItem {
+        int checkinId;
+        String beerName;
+        String breweryName;
+        double abv;
+        String servingType;
+        Integer volumeMlOverride;
+        long createdAtMs;
+        boolean phantom;
+    }
 
     // Flash state for danger zone (BAC >= 0.20)
     private boolean isFlashing = false;
@@ -108,7 +124,8 @@ public class MainActivity extends Activity {
     private FrameLayout splashOverlay;
     private EditText pinEditText;
     private Button connectBtn;
-    private LinearLayout beerListContainer;
+    private ListView beerListView;
+    private TextView beerSelectedLabel;
 
     private final Runnable uiTicker = new Runnable() {
         @Override public void run() {
@@ -217,14 +234,30 @@ public class MainActivity extends Activity {
                     if (c == null) continue;
                     String beerName = c.optString("beerName", "").trim();
                     if (beerName.isEmpty()) continue;
-                    double abv = c.optDouble("abv", -1.0);
-                    String row = beerName;
-                    if (abv >= 0.0) {
-                        row += " \u00b7 " + String.format(Locale.US, "%.1f%%", abv);
+                    WatchBeerItem item = new WatchBeerItem();
+                    item.checkinId = c.optInt("checkinId", -1);
+                    item.beerName = beerName;
+                    item.breweryName = c.optString("breweryName", "");
+                    item.abv = c.optDouble("abv", -1.0);
+                    item.servingType = c.optString("servingType", "");
+                    item.createdAtMs = c.optLong("createdAtMs", 0L);
+                    item.phantom = c.optBoolean("phantom", false);
+                    if (c.has("volumeMlOverride") && !c.isNull("volumeMlOverride")) {
+                        item.volumeMlOverride = c.optInt("volumeMlOverride");
                     }
-                    beerListItems.add(row);
+                    beerListItems.add(item);
                 }
             }
+
+            Collections.sort(beerListItems, new Comparator<WatchBeerItem>() {
+                @Override
+                public int compare(WatchBeerItem a, WatchBeerItem b) {
+                    return Long.compare(b.createdAtMs, a.createdAtMs);
+                }
+            });
+
+            if (selectedBeerIndex >= beerListItems.size()) selectedBeerIndex = beerListItems.isEmpty() ? -1 : 0;
+            if (selectedBeerIndex < 0 && !beerListItems.isEmpty()) selectedBeerIndex = 0;
 
             refreshAll();
             refreshBeerListUi();
@@ -402,23 +435,168 @@ public class MainActivity extends Activity {
     }
 
     private void refreshBeerListUi() {
-        if (beerListContainer == null) return;
-        beerListContainer.removeAllViews();
+        if (beerListView == null || beerSelectedLabel == null) return;
 
-        if (beerListItems.isEmpty()) {
-            TextView empty = tv("No beers yet", 12, 0xff9ca3af, Typeface.NORMAL);
-            empty.setGravity(Gravity.CENTER_HORIZONTAL);
-            beerListContainer.addView(empty, centredLp(dp(4)));
+        List<String> rows = new ArrayList<>();
+        for (WatchBeerItem item : beerListItems) {
+            String row = item.beerName + " \u00b7 " + String.format(Locale.US, "%.1f%%", item.abv);
+            rows.add(row);
+        }
+
+        if (rows.isEmpty()) {
+            rows.add("No beers yet");
+            selectedBeerIndex = -1;
+        } else if (selectedBeerIndex < 0 || selectedBeerIndex >= rows.size()) {
+            selectedBeerIndex = 0;
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_activated_1, rows);
+        beerListView.setAdapter(adapter);
+        beerListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        if (selectedBeerIndex >= 0) {
+            beerListView.setItemChecked(selectedBeerIndex, true);
+        }
+
+        if (selectedBeerIndex >= 0 && selectedBeerIndex < beerListItems.size()) {
+            WatchBeerItem s = beerListItems.get(selectedBeerIndex);
+            beerSelectedLabel.setText("Selected: " + s.beerName);
+        } else {
+            beerSelectedLabel.setText("Selected: None");
+        }
+    }
+
+    private WatchBeerItem selectedBeer() {
+        if (selectedBeerIndex < 0 || selectedBeerIndex >= beerListItems.size()) return null;
+        return beerListItems.get(selectedBeerIndex);
+    }
+
+    private void showBeerDetails() {
+        WatchBeerItem item = selectedBeer();
+        if (item == null) {
+            Toast.makeText(this, "Select a beer first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String details = item.beerName
+                + "\nABV: " + String.format(Locale.US, "%.1f%%", item.abv)
+                + (item.breweryName.isEmpty() ? "" : "\nBrewery: " + item.breweryName)
+                + "\nType: " + item.servingType
+                + (item.volumeMlOverride == null ? "" : "\nOverride: " + item.volumeMlOverride + " ml")
+                + "\nWhen: " + formatAgo(Math.max(0, System.currentTimeMillis() - item.createdAtMs))
+                + (item.phantom ? "\nManual beer" : "");
+        Toast.makeText(this, details, Toast.LENGTH_LONG).show();
+    }
+
+    private void editSelectedBeer() {
+        WatchBeerItem item = selectedBeer();
+        if (item == null) {
+            Toast.makeText(this, "Select a beer first", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        int maxRows = Math.min(beerListItems.size(), 20);
-        for (int i = 0; i < maxRows; i++) {
-            TextView row = tv("\u2022 " + beerListItems.get(i), 12, 0xffe5e7eb, Typeface.NORMAL);
-            row.setMaxLines(1);
-            row.setEllipsize(TextUtils.TruncateAt.END);
-            beerListContainer.addView(row, lp(i == 0 ? 0 : dp(4), 0, 0, 0));
+        final EditText input = new EditText(this);
+        input.setHint("ml (blank = clear)");
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        if (item.volumeMlOverride != null) {
+            input.setText(String.valueOf(item.volumeMlOverride));
+            input.setSelection(input.getText().length());
         }
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+                .setTitle("Edit serving")
+                .setMessage(item.beerName)
+                .setView(input)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+
+        dialog.setOnShowListener(d -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String txt = input.getText().toString().trim();
+            Integer ml = null;
+            if (!txt.isEmpty()) {
+                try {
+                    ml = Integer.parseInt(txt);
+                    if (ml < 50 || ml > 2000) {
+                        Toast.makeText(this, "Use 50-2000 ml", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.makeText(this, "Invalid number", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            patchServing(item.checkinId, ml);
+            dialog.dismiss();
+        }));
+
+        dialog.show();
+    }
+
+    private void deleteSelectedBeer() {
+        WatchBeerItem item = selectedBeer();
+        if (item == null) {
+            Toast.makeText(this, "Select a beer first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Delete beer")
+                .setMessage("Delete " + item.beerName + "?")
+                .setPositiveButton("Delete", (d, w) -> deleteBeer(item.checkinId))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void patchServing(int checkinId, Integer volumeMl) {
+        if (deviceToken == null) return;
+        executor.execute(() -> {
+            try {
+                URL url = new URL(WEB_API_BASE + "/api/checkins/" + checkinId + "?device=" + deviceToken);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("PATCH");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(10_000);
+                String body = "{\"volumeMl\":" + (volumeMl == null ? "null" : volumeMl) + "}";
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.getBytes("UTF-8"));
+                }
+                int code = conn.getResponseCode();
+                handler.post(() -> {
+                    if (code >= 200 && code < 300) {
+                        Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show();
+                        pollWebApi();
+                    } else {
+                        Toast.makeText(this, "Edit failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                handler.post(() -> Toast.makeText(this, "Edit error", Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    private void deleteBeer(int checkinId) {
+        if (deviceToken == null) return;
+        executor.execute(() -> {
+            try {
+                URL url = new URL(WEB_API_BASE + "/api/checkins/" + checkinId + "?device=" + deviceToken);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("DELETE");
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(10_000);
+                int code = conn.getResponseCode();
+                handler.post(() -> {
+                    if (code >= 200 && code < 300) {
+                        Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
+                        pollWebApi();
+                    } else {
+                        Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                handler.post(() -> Toast.makeText(this, "Delete error", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -654,19 +832,50 @@ public class MainActivity extends Activity {
         beerTitle.setGravity(Gravity.CENTER_HORIZONTAL);
         beerModalCard.addView(beerTitle, centredLp(0));
 
-        ScrollView beerScroll = new ScrollView(this);
-        beerScroll.setFillViewport(true);
-        LinearLayout.LayoutParams beerScrollLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            dp(150));
-        beerScrollLp.topMargin = dp(8);
+        beerSelectedLabel = tv("Selected: None", 10, 0xff9ca3af, Typeface.NORMAL);
+        beerSelectedLabel.setGravity(Gravity.CENTER_HORIZONTAL);
+        beerModalCard.addView(beerSelectedLabel, centredLp(dp(6)));
 
-        beerListContainer = new LinearLayout(this);
-        beerListContainer.setOrientation(LinearLayout.VERTICAL);
-        beerScroll.addView(beerListContainer, new ScrollView.LayoutParams(
-            ScrollView.LayoutParams.MATCH_PARENT,
-            ScrollView.LayoutParams.WRAP_CONTENT));
-        beerModalCard.addView(beerScroll, beerScrollLp);
+        beerListView = new ListView(this);
+        beerListView.setDividerHeight(dp(2));
+        beerListView.setBackgroundColor(0x00000000);
+        LinearLayout.LayoutParams beerListLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(120));
+        beerListLp.topMargin = dp(6);
+        beerModalCard.addView(beerListView, beerListLp);
+
+        beerListView.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
+            if (position >= 0 && position < beerListItems.size()) {
+            selectedBeerIndex = position;
+            refreshBeerListUi();
+            }
+        });
+
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setGravity(Gravity.CENTER);
+        actionRow.setPadding(0, dp(8), 0, 0);
+
+        Button detailsBtn = new Button(this);
+        detailsBtn.setText("Details");
+        detailsBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        detailsBtn.setOnClickListener(v -> showBeerDetails());
+
+        Button editBtn = new Button(this);
+        editBtn.setText("Edit");
+        editBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        editBtn.setOnClickListener(v -> editSelectedBeer());
+
+        Button deleteBtn = new Button(this);
+        deleteBtn.setText("Delete");
+        deleteBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
+        deleteBtn.setOnClickListener(v -> deleteSelectedBeer());
+
+        actionRow.addView(detailsBtn);
+        actionRow.addView(editBtn);
+        actionRow.addView(deleteBtn);
+        beerModalCard.addView(actionRow);
 
         TextView beerHint = tv("Tap outside to close", 10, 0xff9ca3af, Typeface.NORMAL);
         beerHint.setGravity(Gravity.CENTER_HORIZONTAL);

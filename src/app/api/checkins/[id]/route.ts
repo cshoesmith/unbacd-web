@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies }                   from 'next/headers';
 import { getIronSession }            from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/session';
-import { getBacCache, setBacCache, getUser } from '@/lib/kv';
+import { getBacCache, setBacCache, getUser, getDevice } from '@/lib/kv';
 import { calculateBac }              from '@/lib/bac';
+
+async function resolveUserId(req: NextRequest): Promise<string | null> {
+  const cookieStore = await cookies();
+  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  if (session.userId) return session.userId;
+
+  const deviceToken = req.nextUrl.searchParams.get('device');
+  if (!deviceToken) return null;
+  const device = await getDevice(deviceToken);
+  return device?.userId ?? null;
+}
 
 /**
  * PATCH /api/checkins/:id
@@ -19,9 +30,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-  if (!session.userId) {
+  const userId = await resolveUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
   }
 
@@ -35,8 +45,8 @@ export async function PATCH(
   const volumeMl: number | null = body.volumeMl ?? null;
 
   const [cache, user] = await Promise.all([
-    getBacCache(session.userId),
-    getUser(session.userId),
+    getBacCache(userId),
+    getUser(userId),
   ]);
 
   if (!cache || !user) {
@@ -64,18 +74,17 @@ export async function PATCH(
     user.defaultServingMl,
   );
 
-  await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
+  await setBacCache(userId, { ...result, checkins: updatedCheckins });
 
   return NextResponse.json({ ...result, checkins: updatedCheckins });
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-  if (!session.userId) {
+  const userId = await resolveUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
   }
 
@@ -86,8 +95,8 @@ export async function DELETE(
   }
 
   const [cache, user] = await Promise.all([
-    getBacCache(session.userId),
-    getUser(session.userId),
+    getBacCache(userId),
+    getUser(userId),
   ]);
 
   if (!cache || !user) {
@@ -116,7 +125,7 @@ export async function DELETE(
     user.defaultServingMl,
   );
 
-  await setBacCache(session.userId, { ...result, checkins: updatedCheckins });
+  await setBacCache(userId, { ...result, checkins: updatedCheckins });
 
   return NextResponse.json({ ...result, checkins: updatedCheckins });
 }
