@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { bacLabel, bacColor, formatDuration, resolveServingMl, calculateBac } from '@/lib/bac';
 import type { CachedCheckin } from '@/lib/kv';
+import pbu80Yellow from '../../../pbu_80_yellow.png';
 
 interface Props {
   username: string;
@@ -68,17 +69,15 @@ function BacCircle({
         transition: flashing ? 'none' : 'background-color 0.6s ease',
       }}
     >
-      {/* Subtle embossed watermark below last sync */}
+      {/* Emboss watermark image below last sync */}
       <div className="absolute top-[41px] left-1/2 pointer-events-none select-none z-0" style={{ transform: 'translateX(-50%)' }}>
-        <span
-          className="text-[11px] font-semibold tracking-[0.18em] uppercase whitespace-nowrap"
-          style={{
-            color: 'rgba(255,255,255,0.10)',
-            textShadow: '0 1px 1px rgba(255,255,255,0.12), 0 -1px 1px rgba(0,0,0,0.35)',
-          }}
-        >
-          Powered by Untappd
-        </span>
+        <img
+          src={pbu80Yellow.src}
+          alt=""
+          aria-hidden="true"
+          className="w-20 h-auto"
+          style={{ opacity: 0.38, filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.12)) drop-shadow(0 -1px 1px rgba(0,0,0,0.35))' }}
+        />
       </div>
 
       {/* BAC number + unit labels */}
