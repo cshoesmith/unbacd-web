@@ -211,16 +211,16 @@ function DrinkList({
         <button
           onClick={openForm}
           className="w-6 h-6 flex items-center justify-center rounded-full bg-[#ffd166]/10 hover:bg-[#ffd166]/20 text-[#ffd166] text-lg leading-none transition-colors"
-          aria-label="Add phantom beer"
+          aria-label="Add manual beer"
         >
           +
         </button>
       </div>
 
-      {/* Phantom add form */}
+      {/* Manual beer add form */}
       {showForm && (
         <div className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/20 rounded-xl px-4 py-3 gap-3 mb-2">
-          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add phantom beer</p>
+          <p className="text-[#ffd166] text-xs font-bold uppercase tracking-wider">Add manual beer</p>
 
           <input
             type="text"
@@ -295,20 +295,10 @@ function DrinkList({
                 <div
                   key={c.checkinId ?? i}
                   className="relative overflow-hidden rounded-xl"
-                  onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
-                  onTouchEnd={(e) => {
-                    const touchEnd = e.changedTouches[0].clientX;
-                    const diff = touchStart - touchEnd;
-                    if (diff > 50) {
-                      setSwipedId(c.checkinId);
-                    } else if (diff < -50) {
-                      setSwipedId(null);
-                    }
-                  }}
                 >
                   {/* Delete button background */}
                   {isSlid && (
-                    <div className="absolute right-0 top-0 bottom-0 bg-red-500/80 w-16 flex items-center justify-center">
+                    <div className="absolute right-0 top-0 bottom-0 bg-red-500/80 w-16 flex items-center justify-center z-0">
                       <button
                         onClick={() => {
                           onPhantomRemove(c.checkinId!);
@@ -325,10 +315,20 @@ function DrinkList({
                   
                   {/* Main content */}
                   <div
-                    className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1 transition-transform"
+                    className="flex flex-col bg-[#ffd166]/5 border border-[#ffd166]/15 rounded-xl px-4 py-3 gap-1 transition-transform z-10 relative cursor-pointer select-none"
                     style={{
                       transform: isSlid ? 'translateX(-64px)' : 'translateX(0)',
                       transitionDuration: '200ms',
+                    }}
+                    onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
+                    onTouchEnd={(e) => {
+                      const touchEnd = e.changedTouches[0].clientX;
+                      const diff = touchStart - touchEnd;
+                      if (diff > 50) {
+                        setSwipedId(c.checkinId);
+                      } else if (diff < -50) {
+                        setSwipedId(null);
+                      }
                     }}
                   >
                     <div className="flex items-start justify-between gap-2">
