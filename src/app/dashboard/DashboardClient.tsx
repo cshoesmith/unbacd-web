@@ -94,21 +94,25 @@ function BacCircle({
         </span>
       </div>
 
-      {/* Compact status block inside circle to save vertical space */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center leading-tight">
+      {/* Last sync at top of circle */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+        <p className="text-[11px] font-medium whitespace-nowrap" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+          {lastSyncText}
+        </p>
+      </div>
+
+      {/* Compact status block inside circle */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 leading-tight">
         {soberText && (
-          <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+          <p className="text-[11px] font-medium whitespace-nowrap" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
             {soberText}
           </p>
         )}
         {drinkCount !== null && (
-          <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
+          <p className="text-[11px] font-medium whitespace-nowrap" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
             {drinkCount} {drinkCount === 1 ? 'drink' : 'drinks'} · 24h
           </p>
         )}
-        <p className="text-[10px]" style={{ color: isDark ? '#9ca3af' : '#f3f4f6' }}>
-          {lastSyncText}
-        </p>
       </div>
     </div>
   );
